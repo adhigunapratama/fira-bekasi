@@ -1,6 +1,5 @@
-FIRA v0.9 - Map layers and walking route labels
-- Default satellite imagery (Esri World Imagery) with Street Map toggle (OpenStreetMap).
-- Walking route can start from current GPS or a manually selected map point.
-- Route start and destination are validated against Kabupaten Bekasi boundary.
-- Walking route line, route distance label, start label, and destination ODP name label are displayed.
-- Walking routing uses public Valhalla pedestrian service; availability depends on public service uptime and pedestrian network coverage.
+FIRA v1.0 - Smart Map Search
+- Search ODP names and attributes (STO, desa, kecamatan, kabupaten, branch, cluster, city).
+- Search public map locations such as roads, housing estates and landmarks via bounded Nominatim results, filtered against the official Kabupaten Bekasi polygon.
+- Selecting a map location moves the map only; it does not change the radius center.
+- Selecting an ODP opens its profile.
