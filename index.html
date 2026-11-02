@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#c8102e"><title>FIRA — Fiber Infrastructure & Sales Area</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--red:#c8102e;--dark:#26232a;--muted:#737780;--bg:#f4f5f7}
+*{box-sizing:border-box}body{margin:0;font:14px system-ui,-apple-system,Segoe UI,sans-serif;color:var(--dark);background:var(--bg)}
+header{height:62px;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 18px;box-shadow:0 2px 10px #0002}
+.brand{font-size:25px;font-weight:850;letter-spacing:1px}.brand small{display:block;font-size:9px;font-weight:500;letter-spacing:.8px}
+button,input,select{font:inherit}button{border:1px solid #ddd;background:#fff;border-radius:9px;padding:9px 12px;cursor:pointer;font-weight:650}button.primary{background:var(--red);border-color:var(--red);color:#fff}
+main{max-width:1400px;margin:auto;padding:14px}.card{background:white;border-radius:14px;padding:14px;box-shadow:0 2px 10px #0000000a;margin-bottom:12px}
+.auth{max-width:430px;margin:8vh auto}.auth h1{color:var(--red);margin:0}.auth input{width:100%;padding:12px;border:1px solid #ddd;border-radius:9px;margin:5px 0 12px}
+.hidden{display:none!important}.toolbar{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.toolbar label{font-size:11px;color:var(--muted);font-weight:700;display:block}.toolbar select{padding:9px;border:1px solid #ddd;border-radius:9px}
+.radius{flex:1;min-width:220px}.radius input{width:100%;accent-color:var(--red)}.radius strong{color:var(--red);font-size:17px}
+#map{height:68vh;min-height:430px;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px #0002}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px}.dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px}
+.statusline{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;color:#555;font-size:12px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#26232a;color:white;padding:11px 16px;border-radius:10px;display:none;z-index:2000;max-width:90%}
+.modal{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:1500;padding:12px}.modal.show{display:flex}.panel{background:white;border-radius:16px;padding:18px;width:min(550px,100%);max-height:90vh;overflow:auto}.panel h2{color:var(--red);margin:4px 0}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.metric{background:#f3f4f6;padding:10px;border-radius:9px}.metric small{display:block;color:#777}.actions{display:flex;gap:8px;flex-wrap:wrap}
+table{border-collapse:collapse;width:100%;font-size:13px}td,th{padding:9px;border-bottom:1px solid #eee;text-align:left}
+footer{text-align:center;color:#8b8e95;font-size:10px;padding:18px}
+@media(max-width:650px){#map{height:62vh;min-height:380px}.toolbar>*{width:100%}.metrics{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header><div class="brand">FIRA<small>FIBER INFRASTRUCTURE &amp; SALES AREA</small></div><div id="userArea" class="hidden"><span id="userLabel"></span> <button id="logoutBtn">Keluar</button></div></header>
+<main>
+<section id="authView" class="card auth">
+<h1>FIRA</h1><div style="color:#777;margin-bottom:16px">Fiber Infrastructure &amp; Sales Area</div>
+<div id="loginBox"><h3>Masuk</h3><label>Email</label><input id="loginEmail" type="email" autocomplete="username"><label>Password</label><input id="loginPass" type="password" autocomplete="current-password"><button class="primary" id="loginBtn" style="width:100%">Masuk ke FIRA</button><p>Belum punya akun? <a href="#" id="showSignup">Daftar Sales Force</a></p></div>
+<div id="signupBox" class="hidden"><h3>Registrasi Sales Force</h3><label>Nama lengkap</label><input id="regName"><label>ID Karyawan</label><input id="regNip"><label>Nomor HP</label><input id="regPhone"><label>Email</label><input id="regEmail" type="email"><label>Password (minimal 8 karakter)</label><input id="regPass" type="password"><button class="primary" id="signupBtn" style="width:100%">Daftar</button><p><a href="#" id="showLogin">Kembali ke login</a></p></div>
+<p style="font-size:11px;color:#888">Akun baru perlu persetujuan Manager sebelum dapat mengakses peta.</p>
+</section>
+<section id="pendingView" class="card hidden" style="max-width:550px;margin:10vh auto;text-align:center"><h2>Registrasi diterima</h2><p>Akun FIRA kamu masih menunggu persetujuan Manager. Silakan coba masuk kembali setelah akun disetujui.</p><button id="pendingLogout">Keluar</button></section>
+<section id="appView" class="hidden">
+<div class="card toolbar">
+<div><label>TITIK PUSAT</label><select id="origin"><option value="gps">Lokasi GPS saya</option><option value="manual">Pilih titik di peta</option></select></div>
+<button id="gpsBtn">Gunakan GPS</button>
+<div class="radius"><label>RADIUS PENCARIAN ODP <strong id="radiusLabel">1,0 KM</strong></label><input id="radius" type="range" min="100" max="10000" step="100" value="1000"></div>
+<div><label>FILTER STATUS 2</label><select id="statusFilter"><option value="">Semua status</option><option>Black</option><option>Green</option><option>Yellow</option><option>Orange</option><option>Red</option></select></div>
+<button id="refreshBtn">Cari ODP</button>
+</div>
+<div id="managerPanel" class="card hidden"><b>Panel Manager</b><div id="pendingList">Memuat akun menunggu persetujuan…</div></div>
+<div id="map"></div>
+<div class="card legend">
+<span><i class="dot" style="background:#171717"></i>Black</span><span><i class="dot" style="background:#269b62"></i>Green</span><span><i class="dot" style="background:#e3ad27"></i>Yellow</span><span><i class="dot" style="background:#ed8b25"></i>Orange</span><span><i class="dot" style="background:#d71920"></i>Red</span>
+</div>
+<div class="card statusline"><span id="count">Menunggu lokasi pusat…</span><span id="centerText">Pilih GPS atau titik manual</span></div>
+<p style="font-size:11px;color:#777">Radius menggunakan jarak garis lurus. Pengukuran rute jalan kaki akan ditambahkan pada tahap routing. ODP dengan koordinat tidak valid tidak ditampilkan.</p>
+</section>
+</main>
+<footer>Developed by THCO Kabupaten Bekasi — 2026</footer>
+<div class="modal" id="profileModal"><div class="panel"><button id="closeProfile" style="float:right">Tutup</button><div style="font-size:11px;color:#777">PROFIL OPTICAL DISTRIBUTION POINT</div><h2 id="pName"></h2><div id="pStatus"></div><div class="metrics" id="pMetrics"></div><div class="actions"><button id="routeBtn">Ukur rute jalan kaki</button><button id="googleBtn">Buka navigasi</button></div><p id="routeInfo" style="font-size:12px;color:#666"></p></div></div>
+<div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const SUPABASE_URL="https://qywbtdchvkbdjzcljykq.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_6JXoGmWw1e3c1TidYlZtEw_qiZvDog-";
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+const $=id=>document.getElementById(id);
+let currentUser=null, profile=null, map=null, markers=null, center=null, selectedOdp=null, currentSession=null, centerMarker=null, radiusCircle=null, centerLayers=null, bekasiBoundary=null, boundaryLayer=null, boundaryReady=false;
+const colors={Black:"#171717",Green:"#269b62",Yellow:"#e3ad27",Orange:"#ed8b25",Red:"#d71920"};
+function toast(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',3500)}
+function show(id){$(id).classList.remove('hidden')}function hide(id){$(id).classList.add('hidden')}
+$('showSignup').onclick=e=>{e.preventDefault();hide('loginBox');show('signupBox')};$('showLogin').onclick=e=>{e.preventDefault();hide('signupBox');show('loginBox')};
+$('signupBtn').onclick=async()=>{let full_name=$('regName').value.trim(),email=$('regEmail').value.trim(),password=$('regPass').value;if(!full_name||!email||password.length<8){toast('Lengkapi nama, email, dan password minimal 8 karakter.');return}
+let {error}=await sb.auth.signUp({email,password,options:{data:{full_name,employee_id:$('regNip').value.trim(),phone:$('regPhone').value.trim()}}});if(error){toast(error.message);return}toast('Pendaftaran berhasil. Periksa email jika konfirmasi email diaktifkan. Akun menunggu persetujuan Manager.');hide('signupBox');show('loginBox')};
+$('loginBtn').onclick=async()=>{let {data,error}=await sb.auth.signInWithPassword({email:$('loginEmail').value.trim(),password:$('loginPass').value});if(error){toast(error.message);return}await enterApp(data.user)};
+async function enterApp(user){currentUser=user;let {data,error}=await sb.from('profiles').select('*').eq('id',user.id).single();if(error||!data){toast('Profil belum tersedia: '+(error?.message||''));return}profile=data;
+hide('authView');hide('pendingView');hide('appView');hide('userArea');
+if(profile.account_status!=='approved'){show('pendingView');return}
+show('appView');show('userArea');$('userLabel').textContent=profile.full_name||user.email;
+if(profile.role==='manager'||profile.role==='super_admin'){show('managerPanel');loadPending()}
+startSession();initMap()}
+async function startSession(){let {data,error}=await sb.from('access_sessions').insert({user_id:currentUser.id}).select('id').single();if(!error)currentSession=data.id}
+async function closeSession(){if(currentSession){await sb.from('access_sessions').update({logged_out_at:new Date().toISOString()}).eq('id',currentSession);currentSession=null}}
+async function logout(){await closeSession();await sb.auth.signOut();currentUser=null;profile=null;hide('appView');hide('pendingView');hide('userArea');show('authView')}
+$('logoutBtn').onclick=logout;$('pendingLogout').onclick=logout;
+window.addEventListener('beforeunload',()=>{if(currentSession)sb.from('access_sessions').update({logged_out_at:new Date().toISOString()}).eq('id',currentSession)});
+function initMap(){if(map){map.remove();map=null}boundaryReady=false;bekasiBoundary=null;map=L.map('map').setView([-6.25,107.1],11);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);markers=L.layerGroup().addTo(map);centerLayers=L.layerGroup().addTo(map);loadBekasiBoundary();map.on('click',async e=>{if($('origin').value==='manual'){if(!boundaryReady){toast('Batas Kabupaten Bekasi sedang dimuat. Tunggu sebentar lalu coba lagi.');return}if(!isInsideBekasi(e.latlng.lat,e.latlng.lng)){toast('Titik ditolak. Pilih lokasi di dalam Kabupaten Bekasi.');return}if(await setSearchCenter(e.latlng.lat,e.latlng.lng,'manual'))loadOdps()}})}
+// Memuat polygon administrasi Kabupaten Bekasi dari layanan resmi BIG.
+async function loadBekasiBoundary(){try{const endpoint='https://geoservices.big.go.id/rbi/rest/services/BATASWILAYAH/BATAS_KABKOTA_AR/MapServer/0/query';const params=new URLSearchParams({where:"WADMPR='Jawa Barat'",outFields:'WADMKK,WADMPR',returnGeometry:'true',outSR:'4326',f:'geojson'});const response=await fetch(endpoint+'?'+params.toString());if(!response.ok)throw new Error('HTTP '+response.status);const geo=await response.json();if(!geo.features?.length)throw new Error('Data batas tidak ditemukan');const matches=geo.features.filter(f=>{const p=f.properties||{};const kab=String(p.WADMKK||p.wadmkk||'').toLowerCase();return kab.includes('bekasi')&&!kab.includes('kota')});if(!matches.length)throw new Error('Polygon Kabupaten Bekasi tidak ditemukan pada data BIG');bekasiBoundary={type:'FeatureCollection',features:matches};boundaryLayer=L.geoJSON(bekasiBoundary,{style:{color:'#c8102e',weight:3,opacity:.9,fillColor:'#c8102e',fillOpacity:.035}}).addTo(map);boundaryLayer.bindTooltip('Batas Kabupaten Bekasi');boundaryReady=true;toast('Batas Kabupaten Bekasi berhasil dimuat.');if($('origin').value==='gps')getGPS(false);}catch(err){boundaryReady=false;console.error('Gagal memuat batas Kabupaten Bekasi:',err);toast('Batas wilayah gagal dimuat. Pemilihan titik dinonaktifkan agar lokasi di luar Bekasi tidak diterima. Periksa koneksi internet lalu muat ulang.')}}
+function pointInRing(lat,lon,ring){let inside=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1];const intersects=((yi>lat)!==(yj>lat))&&(lon<(xj-xi)*(lat-yi)/(yj-yi)+xi);if(intersects)inside=!inside;}return inside}
+function pointInPolygonCoords(lat,lon,poly){if(!poly?.length||!pointInRing(lat,lon,poly[0]))return false;for(let i=1;i<poly.length;i++)if(pointInRing(lat,lon,poly[i]))return false;return true}
+function isInsideBekasi(lat,lon){if(!boundaryReady||!bekasiBoundary)return false;for(const f of bekasiBoundary.features){const g=f.geometry;if(!g)continue;if(g.type==='Polygon'&&pointInPolygonCoords(lat,lon,g.coordinates))return true;if(g.type==='MultiPolygon'&&g.coordinates.some(poly=>pointInPolygonCoords(lat,lon,poly)))return true;}return false}
+function drawSearchArea(){if(!map||!center||!centerLayers)return;centerLayers.clearLayers();const ll=[center.lat,center.lon],r=Number($('radius').value);radiusCircle=L.circle(ll,{radius:r,color:'#c8102e',weight:2,opacity:.9,fillColor:'#e63950',fillOpacity:.16}).addTo(centerLayers);centerMarker=L.marker(ll,{title:'Titik pusat pencarian'}).addTo(centerLayers).bindTooltip('Titik pusat pencarian',{direction:'top'});$('centerText').textContent=(center.source==='gps'?'Pusat GPS: ':'Pusat manual: ')+center.lat.toFixed(5)+', '+center.lon.toFixed(5);}
+async function setSearchCenter(lat,lon,source){if(!boundaryReady){toast('Batas Kabupaten Bekasi belum siap. Titik belum dapat digunakan.');return false}if(!isInsideBekasi(lat,lon)){toast('Lokasi ditolak. FIRA hanya dapat digunakan untuk titik di dalam Kabupaten Bekasi.');return false}center={lat,lon,source};drawSearchArea();map.setView([lat,lon],Math.max(map.getZoom(),14));$('count').textContent='Titik pusat dipilih · radius '+(Number($('radius').value)>=1000?(Number($('radius').value)/1000).toFixed(1).replace('.',',')+' KM':$('radius').value+' M');return true;}
+function getGPS(auto=true){if(!navigator.geolocation){toast('Browser tidak mendukung GPS');return}if(!boundaryReady){toast('Batas Kabupaten Bekasi belum siap. Tunggu sebentar lalu coba lagi.');return}navigator.geolocation.getCurrentPosition(async pos=>{if(await setSearchCenter(pos.coords.latitude,pos.coords.longitude,'gps'))loadOdps()},err=>{if(!auto)toast('GPS gagal: '+err.message)}, {enableHighAccuracy:true,timeout:15000})}
+$('gpsBtn').onclick=()=>{$('origin').value='gps';getGPS(false)};$('origin').onchange=()=>{if($('origin').value==='gps')getGPS(false);else{center=null;if(centerLayers)centerLayers.clearLayers();$('centerText').textContent='Mode titik manual aktif · klik lokasi di peta';$('count').textContent='Menunggu titik pusat manual…';toast(boundaryReady?'Mode pilih titik aktif. Klik lokasi di dalam Kabupaten Bekasi.':'Batas wilayah sedang dimuat. Tunggu sebentar.')}};
+$('radius').oninput=()=>{$('radiusLabel').textContent=Number($('radius').value)>=1000?(Number($('radius').value)/1000).toFixed(1).replace('.',',')+' KM':$('radius').value+' M';if(center)drawSearchArea()};
+$('refreshBtn').onclick=loadOdps;$('statusFilter').onchange=loadOdps;
+async function loadOdps(){if(!center){toast('Tentukan titik pusat dengan GPS atau klik lokasi di peta terlebih dahulu.');return}drawSearchArea();markers.clearLayers();let status=$('statusFilter').value;let {data,error}=await sb.rpc('odps_within_radius',{center_lat:center.lat,center_lon:center.lon,radius_m:Number($('radius').value),status_filter:status?[status]:null});if(error){toast('Gagal mengambil ODP: '+error.message);return}
+let shown=0;for(const o of data||[]){if(!o.latitude||!o.longitude)continue;let marker=L.circleMarker([o.latitude,o.longitude],{radius:6,weight:1,color:'#fff',fillColor:colors[o.status_2]||'#888',fillOpacity:.95});marker.on('click',()=>openProfile(o));marker.addTo(markers);shown++}
+$('count').textContent=shown.toLocaleString('id-ID')+' ODP dalam radius · hasil server';if(center)map.fitBounds(radiusCircle.getBounds(),{padding:[20,20],maxZoom:16});}
+function openProfile(o){selectedOdp=o;$('pName').textContent=o.odp_name;$('pStatus').textContent='STATUS 2: '+o.status_2;$('pMetrics').innerHTML='';const vals=[['Tanggal Go Live',o.tanggal_go_live||'—'],['STO',o.sto_desc||'—'],['Kecamatan',o.sifa_kecamatan||'—'],['Desa',o.sifa_desa||'—'],['Total port',o.total_port??'—'],['Used port',o.used_port??'—'],['Available port',o.avai_port??'—'],['Jarak garis lurus',o.distance_m?Math.round(o.distance_m)+' m':'—']];for(const [k,v] of vals){let el=document.createElement('div');el.className='metric';let sm=document.createElement('small');sm.textContent=k;let b=document.createElement('b');b.textContent=v;el.append(sm,b);$('pMetrics').append(el)}$('routeInfo').textContent='Pengukuran rute jalan kaki belum aktif pada versi ini.';$('profileModal').classList.add('show')}
+$('closeProfile').onclick=()=>$('profileModal').classList.remove('show');$('routeBtn').onclick=()=>toast('Fitur routing jalan kaki akan diaktifkan pada tahap berikutnya.');$('googleBtn').onclick=()=>{if(selectedOdp)window.open(`https://www.google.com/maps/dir/?api=1&destination=${selectedOdp.latitude},${selectedOdp.longitude}&travelmode=walking`,'_blank')};
+async function loadPending(){let {data,error}=await sb.from('profiles').select('id,full_name,employee_id,phone,created_at').eq('role','sf').eq('account_status','pending').order('created_at');if(error){$('pendingList').textContent=error.message;return}if(!data.length){$('pendingList').textContent='Tidak ada pendaftaran yang menunggu.';return}let table=document.createElement('table');table.innerHTML='<tr><th>Nama</th><th>ID SF</th><th>Aksi</th></tr>';data.forEach(p=>{let tr=document.createElement('tr'),td=document.createElement('td');td.textContent=p.full_name;let id=document.createElement('td');id.textContent=p.employee_id||'—';let act=document.createElement('td'),b=document.createElement('button');b.textContent='Setujui';b.onclick=async()=>{let {error}=await sb.rpc('set_sf_account_status',{target_user_id:p.id,new_status:'approved'});if(error)toast(error.message);else{toast('Akun disetujui');loadPending()}};act.append(b);tr.append(td,id,act);table.append(tr)});$('pendingList').replaceChildren(table)}
+sb.auth.getSession().then(({data})=>{if(data.session)enterApp(data.session.user)});
+sb.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){hide('appView');hide('pendingView');show('authView')}});
+</script>
+</body></html>
