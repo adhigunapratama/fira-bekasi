@@ -117,18 +117,23 @@ footer{text-align:center;color:#8b8e95;font-size:10px;padding:18px}
   .search-results{left:0;right:0;top:48px}
 }
 
+
+/* FRIDA v1.3: official user-supplied logo on the login card */
+.auth-logo-wrap{width:100%;display:flex;justify-content:center;align-items:center;margin:0 auto 18px;overflow:hidden}
+.auth-logo{display:block;width:100%;max-width:460px;height:auto;object-fit:contain}
+@media(max-width:650px){.auth-logo-wrap{margin-bottom:14px}.auth-logo{max-width:100%}}
 </style>
 </head>
 <body>
 <header><div class="brand">FRIDA<small>FIBER ROUTING &amp; INTELLIGENCE DATA ASSISTANT</small></div><div id="userArea" class="hidden"><span id="userLabel"></span> <button id="logoutBtn">Keluar</button></div></header>
 <main>
 <section id="authView" class="card auth">
-<h1>FRIDA</h1><div style="color:#777;margin-bottom:16px">Fiber Routing &amp; Intelligence Data Assistant</div>
+<div class="auth-logo-wrap"><img class="auth-logo" src="assets/frida-logo.png" alt="FRIDA — Fiber Routing &amp; Intelligence Data Assistant"></div>
 <div id="loginBox"><h3>Masuk</h3><label>Email</label><input id="loginEmail" type="email" autocomplete="username"><label>Password</label><input id="loginPass" type="password" autocomplete="current-password"><button class="primary" id="loginBtn" style="width:100%">Masuk ke FRIDA</button><p><a href="#" id="showForgot">Lupa Password?</a></p><p>Belum punya akun? <a href="#" id="showSignup">Daftar Sales Force</a></p></div>
 <div id="forgotBox" class="hidden"><h3>Lupa Password</h3><p>Masukkan email akun FRIDA. Kami akan mengirim tautan untuk membuat password baru.</p><label>Email terdaftar</label><input id="forgotEmail" type="email" autocomplete="email"><button class="primary" id="sendResetBtn" style="width:100%">Kirim Tautan Reset</button><p><a href="#" id="forgotBack">Kembali ke login</a></p></div>
 <div id="resetBox" class="hidden"><h3>Buat Password Baru</h3><p>Masukkan password baru untuk akun FRIDA Anda.</p><label>Password baru (minimal 8 karakter)</label><input id="resetPass1" type="password" autocomplete="new-password"><label>Konfirmasi password baru</label><input id="resetPass2" type="password" autocomplete="new-password"><button class="primary" id="saveResetBtn" style="width:100%">Simpan Password Baru</button></div>
 <div id="signupBox" class="hidden"><h3>Registrasi Sales Force</h3><label>Nama lengkap</label><input id="regName"><label>ID Karyawan</label><input id="regNip"><label>Nomor HP</label><input id="regPhone"><label>Email</label><input id="regEmail" type="email"><label>Password (minimal 8 karakter)</label><input id="regPass" type="password"><button class="primary" id="signupBtn" style="width:100%">Daftar</button><p><a href="#" id="showLogin">Kembali ke login</a></p></div>
-<p style="font-size:11px;color:#888">Akun baru perlu persetujuan Manager sebelum dapat mengakses peta.</p>
+<p style="font-size:11px;color:#888">Akun baru perlu persetujuan Manager sebelum dapat login dan mengakses peta. Tidak perlu konfirmasi email.</p>
 </section>
 <section id="pendingView" class="card hidden" style="max-width:550px;margin:10vh auto;text-align:center"><h2>Registrasi diterima</h2><p>Akun FRIDA kamu masih menunggu persetujuan Manager. Silakan coba masuk kembali setelah akun disetujui.</p><button id="pendingLogout">Keluar</button></section>
 <section id="appView" class="hidden">
@@ -203,10 +208,9 @@ $('forgotBack').onclick=e=>{e.preventDefault();showAuthPanel('loginBox')};
 $('sendResetBtn').onclick=async()=>{const email=$('forgotEmail').value.trim();if(!email){toast('Masukkan email terdaftar terlebih dahulu.');return}const redirectTo=window.location.origin+window.location.pathname+'?reset=1';const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo});if(error){toast('Gagal mengirim tautan: '+error.message);return}toast('Jika email terdaftar, tautan pemulihan akan dikirim. Periksa inbox dan folder spam.');showAuthPanel('loginBox')};
 $('saveResetBtn').onclick=async()=>{const p1=$('resetPass1').value,p2=$('resetPass2').value;if(p1.length<8){toast('Password baru minimal 8 karakter.');return}if(p1!==p2){toast('Konfirmasi password belum sama.');return}const {error}=await sb.auth.updateUser({password:p1});if(error){toast('Password belum berhasil diperbarui: '+error.message);return}toast('Password berhasil diperbarui. Silakan masuk kembali.');await sb.auth.signOut();$('resetPass1').value='';$('resetPass2').value='';showAuthPanel('loginBox')};
 $('signupBtn').onclick=async()=>{let full_name=$('regName').value.trim(),email=$('regEmail').value.trim(),password=$('regPass').value;if(!full_name||!email||password.length<8){toast('Lengkapi nama, email, dan password minimal 8 karakter.');return}
-let {error}=await sb.auth.signUp({email,password,options:{data:{full_name,employee_id:$('regNip').value.trim(),phone:$('regPhone').value.trim()}}});if(error){toast(error.message);return}toast('Pendaftaran berhasil. Periksa email jika konfirmasi email diaktifkan. Akun menunggu persetujuan Manager.');hide('signupBox');show('loginBox')};
-$('loginBtn').onclick=async()=>{let {data,error}=await sb.auth.signInWithPassword({email:$('loginEmail').value.trim(),password:$('loginPass').value});if(error){toast(error.message);return}if(!data.user?.email_confirmed_at){await sb.auth.signOut();toast('Email belum diverifikasi. Periksa inbox/spam dan klik tautan verifikasi Supabase.');return}await enterApp(data.user)};
+let {error}=await sb.auth.signUp({email,password,options:{data:{full_name,employee_id:$('regNip').value.trim(),phone:$('regPhone').value.trim()}}});if(error){toast(error.message);return}toast('Registrasi berhasil. Akun menunggu persetujuan Manager. Setelah disetujui, kamu bisa langsung login.');hide('signupBox');show('loginBox')};
+$('loginBtn').onclick=async()=>{let {data,error}=await sb.auth.signInWithPassword({email:$('loginEmail').value.trim(),password:$('loginPass').value});if(error){toast(error.message);return}await enterApp(data.user)};
 async function enterApp(user){
-if(!user?.email_confirmed_at){await sb.auth.signOut();currentUser=null;profile=null;hide('appView');hide('pendingView');hide('userArea');show('authView');toast('Email belum diverifikasi. Klik tautan verifikasi Supabase sebelum masuk.');return}
 currentUser=user;let {data,error}=await sb.from('profiles').select('*').eq('id',user.id).single();if(error||!data){toast('Profil belum tersedia: '+(error?.message||''));return}profile=data;
 hide('authView');hide('pendingView');hide('appView');hide('userArea');
 if(profile.account_status!=='approved'){show('pendingView');return}
