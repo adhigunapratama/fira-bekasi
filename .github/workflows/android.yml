@@ -56,7 +56,8 @@ jobs:
                   insert += f"    {tag}\n"
 
           if insert:
-              pos = content.find(">") + 1
+              start = content.find("<manifest")
+              pos = content.find(">", start) + 1
               content = content[:pos] + "\n" + insert + content[pos:]
               manifest.write_text(content)
 
