@@ -37,9 +37,9 @@ For production, enable Cloudflare rate limiting/WAF protection on `/__auth/login
 
 ## APK download
 
-The portal serves `/download/apk` through an authenticated Pages Function. The function reads `frida-latest.apk` from a private R2 bucket binding named `FRIDA_APK_BUCKET`. The Android workflow uploads each successful build to that object when the four R2 GitHub Actions secrets are configured.
+The portal serves `/download/apk` through an authenticated Pages Function. The function reads `frida-latest.apk` from a Workers KV namespace bound to the Pages project as `FRIDA_APK_KV`. The Android workflow uploads each successful APK to this KV key when the three Cloudflare GitHub Actions secrets are configured.
 
-Create a private R2 bucket, bind it to the Pages project as `FRIDA_APK_BUCKET`, and add GitHub Actions repository secrets `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `R2_BUCKET`. Never expose the R2 credentials in source code or chat. Until these settings are complete and a new Android build succeeds, the direct-download endpoint will report that the APK is not yet configured or available.
+Create a Workers KV namespace and bind it to the Pages project as `FRIDA_APK_KV`. Add GitHub Actions repository secrets `CF_ACCOUNT_ID`, `CF_KV_NAMESPACE_ID`, and `CF_API_TOKEN`. The API token needs Workers KV Storage Edit permission for the account. Individual KV values have a 25 MiB limit, so publishing is skipped if the APK exceeds that size. Never expose the API token in source code or chat. Until the binding, secrets, and a successful new Android build are configured, the direct-download endpoint will report that the APK is not yet available.
 
 ## Notes
 
