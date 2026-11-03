@@ -1,2 +1,2 @@
-[functions.sf-login]
+[functions.login-with-sf-id]
 verify_jwt = false
