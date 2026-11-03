@@ -1,0 +1,24 @@
+MEMBANGUN APK FRIDA v1.4 TANPA INSTALL NODE.JS / ANDROID STUDIO DI LAPTOP
+
+Paket ini menambahkan workflow GitHub Actions untuk membangun APK di server GitHub.
+Laptop hanya perlu browser dan akses ke repository GitHub.
+
+LANGKAH:
+1. Ekstrak ZIP ini.
+2. Buka repository FRIDA di GitHub.
+3. Unggah isi folder proyek ini ke root repository khusus build (atau buat repository terpisah).
+   Pastikan package.json, capacitor.config.ts, www/, dan folder .github/ berada di root.
+4. Commit perubahan.
+5. Buka tab Actions di GitHub.
+6. Pilih workflow "Build FRIDA Android APK".
+7. Klik Run workflow.
+8. Tunggu sampai selesai (status hijau).
+9. Buka hasil run dan unduh artifact "FRIDA-v1.4-debug-APK".
+10. Ekstrak artifact, lalu pasang app-debug.apk pada HP Android untuk pengujian.
+
+CATATAN:
+- Workflow membuat debug APK untuk pengujian internal, bukan signed release APK.
+- Tidak perlu memasukkan Supabase secret key. Jangan pernah menaruh service-role/secret key di GitHub atau APK.
+- Sebelum mengunggah, perhatikan bahwa workflow membangun file www/index.html yang dibundel dalam paket ini.
+- Setelah APK terpasang, uji login, peta, GPS, dan navigasi di perangkat fisik.
+- Untuk distribusi lebih luas, nantinya buat signed APK dengan signing key yang disimpan sebagai GitHub Secrets atau dikelola aman.
