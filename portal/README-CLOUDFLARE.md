@@ -6,7 +6,7 @@ Landing page for FRIDA, deployed separately from the Android web app by using th
 
 Connect this GitHub repository to Cloudflare Pages and configure:
 
-- Production branch: `main`
+- Production branch: `feature/frida-download-portal`
 - Framework preset: `None`
 - Build command: leave empty
 - Build output directory: `portal`
@@ -37,9 +37,9 @@ For production, enable Cloudflare rate limiting/WAF protection on `/__auth/login
 
 ## APK download
 
-The current button opens the repository's GitHub Actions Android workflow. Select the latest successful run and download artifact `FRIDA-v1.4-debug-APK`. GitHub artifacts expire after the workflow's configured retention period (currently 14 days), and downloading may require GitHub sign-in.
+The portal serves `/download/apk` through an authenticated Pages Function. The function reads `frida-latest.apk` from a private R2 bucket binding named `FRIDA_APK_BUCKET`. The Android workflow uploads each successful build to that object when the four R2 GitHub Actions secrets are configured.
 
-For a smoother internal distribution flow, a later enhancement can copy successful APK builds into a private Cloudflare R2 bucket and serve them through an authenticated Pages Function. Do not publish the APK to a public GitHub Release if it must remain internal.
+Create a private R2 bucket, bind it to the Pages project as `FRIDA_APK_BUCKET`, and add GitHub Actions repository secrets `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `R2_BUCKET`. Never expose the R2 credentials in source code or chat. Until these settings are complete and a new Android build succeeds, the direct-download endpoint will report that the APK is not yet configured or available.
 
 ## Notes
 
