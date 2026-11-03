@@ -1,21 +1,20 @@
-FRIDA v1.1 — Smart Map & Management Navigation
+FRIDA v1.1.1 — Mobile Layout Refinement
 
-Paket ini berisi index.html.
+Berbasis FRIDA v1.1 Smart Map & Management.
 
-Perubahan:
-- Branding FRIDA: Fiber Routing & Intelligence Data Assistant.
-- Navigasi Peta ODP dan Manajemen dipisah.
-- Menu Manajemen hanya ditampilkan bagi role manager dan super_admin.
-- Panel persetujuan SF dipindahkan dari halaman peta ke halaman Manajemen.
-- Radius default 500 meter, minimum 100 meter, maksimum 5 KM.
-- Filter STATUS 2 multi-select; default semua warna aktif.
-- Marker ODP menggunakan Leaflet MarkerCluster.
-- Total ODP dan ringkasan per STATUS 2 dihitung dari hasil RPC radius yang sama.
-- Login memeriksa email_confirmed_at sebelum mengizinkan akses.
+Perbaikan:
+- Tombol Gunakan GPS dibuat ringkas dan berada satu baris dengan pilihan titik pusat pada layar HP.
+- Label FILTER STATUS 2 diganti menjadi FILTER OKUPANSI ODP.
+- Lima pilihan Black, Green, Yellow, Orange, Red ditata sebaris pada layar HP (dapat digeser horizontal bila layar sangat sempit).
+- Kolom pencarian dan tombol Cari dibuat satu baris pada layar HP.
+- Fitur v1.1 lainnya dipertahankan.
+
+Pemasangan:
+1. Backup index.html di GitHub.
+2. Ganti dengan index.html dari ZIP ini.
+3. Commit changes.
+4. Tunggu GitHub Pages selesai deploy.
+5. Refresh keras pada desktop (Ctrl+Shift+R); di HP tutup tab lalu buka ulang atau bersihkan cache situs jika masih menampilkan versi lama.
 
 Catatan:
-- Paket mengasumsikan RPC odps_within_radius menerima status_filter berupa text[] atau null.
-- Jika role Manager belum benar di database, menu Manajemen tidak akan muncul untuk akun tersebut.
-- Jangan menetapkan role melalui form pendaftaran publik. Penetapan Manager harus dilakukan lewat jalur admin/database yang terlindungi.
-- MarkerCluster memerlukan koneksi internet ke CDN unpkg.
-- Simpan backup index.html lama sebelum deploy; uji dahulu, lalu hard refresh Ctrl+Shift+R.
+Ini adalah revisi tata letak mobile. Uji kembali peta, GPS, pencarian, cluster, dan filter setelah deploy.
