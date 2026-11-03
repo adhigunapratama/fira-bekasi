@@ -4,6 +4,8 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#c8102e"><title>FIRA — Fiber Infrastructure & Sales Area</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 <style>
 :root{--red:#c8102e;--dark:#26232a;--muted:#737780;--bg:#f4f5f7}
 *{box-sizing:border-box}body{margin:0;font:14px system-ui,-apple-system,Segoe UI,sans-serif;color:var(--dark);background:var(--bg)}
@@ -22,34 +24,62 @@ main{max-width:1400px;margin:auto;padding:14px}.card{background:white;border-rad
 table{border-collapse:collapse;width:100%;font-size:13px}td,th{padding:9px;border-bottom:1px solid #eee;text-align:left}
 footer{text-align:center;color:#8b8e95;font-size:10px;padding:18px}
 @media(max-width:650px){#map{height:62vh;min-height:380px}.toolbar>*{width:100%}.metrics{grid-template-columns:1fr 1fr}.map-search{flex-wrap:wrap}.map-search input{width:100%;flex:auto}.search-results{right:0;top:44px}}
+
+.app-nav{display:flex;gap:8px;align-items:center;margin:0 0 12px;flex-wrap:wrap}
+.app-nav button{padding:10px 16px}.app-nav button.active{background:var(--red);border-color:var(--red);color:#fff}
+.page-title{font-size:18px;font-weight:800;margin:2px 0 12px}
+.status-filter{display:flex;gap:8px;flex-wrap:wrap;align-items:center;border:1px solid #e5e5e5;border-radius:10px;padding:8px 10px}
+.status-filter label{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:650;color:#333}
+.status-filter input{accent-color:var(--red)}
+.summary-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.summary-item{background:#f5f5f6;border-radius:9px;padding:9px}.summary-item small{display:block;color:#737780;font-size:11px}.summary-item b{font-size:17px}
+.cluster-count{background:rgba(200,16,46,.9);border:3px solid #fff;border-radius:50%;color:white;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 6px #0005}
+@media(max-width:850px){.summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:650px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.status-filter{width:100%}.app-nav button{flex:1}}
+
 </style>
 </head>
 <body>
-<header><div class="brand">FIRA<small>FIBER INFRASTRUCTURE &amp; SALES AREA</small></div><div id="userArea" class="hidden"><span id="userLabel"></span> <button id="logoutBtn">Keluar</button></div></header>
+<header><div class="brand">FRIDA<small>FIBER ROUTING &amp; INTELLIGENCE DATA ASSISTANT</small></div><div id="userArea" class="hidden"><span id="userLabel"></span> <button id="logoutBtn">Keluar</button></div></header>
 <main>
 <section id="authView" class="card auth">
-<h1>FIRA</h1><div style="color:#777;margin-bottom:16px">Fiber Infrastructure &amp; Sales Area</div>
-<div id="loginBox"><h3>Masuk</h3><label>Email</label><input id="loginEmail" type="email" autocomplete="username"><label>Password</label><input id="loginPass" type="password" autocomplete="current-password"><button class="primary" id="loginBtn" style="width:100%">Masuk ke FIRA</button><p>Belum punya akun? <a href="#" id="showSignup">Daftar Sales Force</a></p></div>
+<h1>FRIDA</h1><div style="color:#777;margin-bottom:16px">Fiber Routing &amp; Intelligence Data Assistant</div>
+<div id="loginBox"><h3>Masuk</h3><label>Email</label><input id="loginEmail" type="email" autocomplete="username"><label>Password</label><input id="loginPass" type="password" autocomplete="current-password"><button class="primary" id="loginBtn" style="width:100%">Masuk ke FRIDA</button><p>Belum punya akun? <a href="#" id="showSignup">Daftar Sales Force</a></p></div>
 <div id="signupBox" class="hidden"><h3>Registrasi Sales Force</h3><label>Nama lengkap</label><input id="regName"><label>ID Karyawan</label><input id="regNip"><label>Nomor HP</label><input id="regPhone"><label>Email</label><input id="regEmail" type="email"><label>Password (minimal 8 karakter)</label><input id="regPass" type="password"><button class="primary" id="signupBtn" style="width:100%">Daftar</button><p><a href="#" id="showLogin">Kembali ke login</a></p></div>
 <p style="font-size:11px;color:#888">Akun baru perlu persetujuan Manager sebelum dapat mengakses peta.</p>
 </section>
-<section id="pendingView" class="card hidden" style="max-width:550px;margin:10vh auto;text-align:center"><h2>Registrasi diterima</h2><p>Akun FIRA kamu masih menunggu persetujuan Manager. Silakan coba masuk kembali setelah akun disetujui.</p><button id="pendingLogout">Keluar</button></section>
+<section id="pendingView" class="card hidden" style="max-width:550px;margin:10vh auto;text-align:center"><h2>Registrasi diterima</h2><p>Akun FRIDA kamu masih menunggu persetujuan Manager. Silakan coba masuk kembali setelah akun disetujui.</p><button id="pendingLogout">Keluar</button></section>
 <section id="appView" class="hidden">
+<nav class="app-nav" aria-label="Navigasi utama">
+<button id="navMap" class="active" type="button">🗺️ Peta ODP</button>
+<button id="navManagement" class="hidden" type="button">⚙️ Manajemen</button>
+</nav>
+<div id="mapView">
 <div class="card toolbar">
 <div><label>TITIK PUSAT</label><select id="origin"><option value="gps">Lokasi GPS saya</option><option value="manual">Pilih titik di peta</option></select></div>
 <button id="gpsBtn">Gunakan GPS</button>
-<div class="radius"><label>RADIUS PENCARIAN ODP <strong id="radiusLabel">1,0 KM</strong></label><input id="radius" type="range" min="100" max="10000" step="100" value="1000"></div>
-<div><label>FILTER STATUS 2</label><select id="statusFilter"><option value="">Semua status</option><option>Black</option><option>Green</option><option>Yellow</option><option>Orange</option><option>Red</option></select></div>
-<button id="refreshBtn">Cari ODP</button>
+<div class="radius"><label>RADIUS PENCARIAN ODP <strong id="radiusLabel">500 M</strong></label><input id="radius" type="range" min="100" max="5000" step="100" value="500"></div>
+<div><label>FILTER STATUS 2</label><div class="status-filter" id="statusFilter">
+<label><input type="checkbox" value="Black" checked>Black</label><label><input type="checkbox" value="Green" checked>Green</label><label><input type="checkbox" value="Yellow" checked>Yellow</label><label><input type="checkbox" value="Orange" checked>Orange</label><label><input type="checkbox" value="Red" checked>Red</label>
+</div></div>
+<button id="refreshBtn" class="primary">Cari ODP</button>
 </div>
-<div id="managerPanel" class="card hidden"><b>Panel Manager</b><div id="pendingList">Memuat akun menunggu persetujuan…</div></div>
 <div class="card map-search"><input id="mapSearch" type="search" placeholder="Cari nama ODP, desa, kecamatan, STO, jalan, atau perumahan…" autocomplete="off"><button id="mapSearchBtn" class="primary">Cari</button><div id="searchResults" class="search-results hidden"></div></div>
 <div id="map"><div class="map-switch"><button id="satBtn" class="primary">Satelit</button><button id="streetBtn">Peta Jalan</button></div></div>
-<div class="card legend">
-<span><i class="dot" style="background:#171717"></i>Black</span><span><i class="dot" style="background:#269b62"></i>Green</span><span><i class="dot" style="background:#e3ad27"></i>Yellow</span><span><i class="dot" style="background:#ed8b25"></i>Orange</span><span><i class="dot" style="background:#d71920"></i>Red</span>
+<div class="card">
+<div class="statusline" style="margin-bottom:10px"><b>Ringkasan ODP berdasarkan STATUS 2</b><span id="count">Menunggu lokasi pusat…</span></div>
+<div class="summary-grid">
+<div class="summary-item"><small>Total ODP</small><b id="sumTotal">—</b></div><div class="summary-item"><small>Black</small><b id="sumBlack">—</b></div><div class="summary-item"><small>Green</small><b id="sumGreen">—</b></div><div class="summary-item"><small>Yellow</small><b id="sumYellow">—</b></div><div class="summary-item"><small>Orange</small><b id="sumOrange">—</b></div><div class="summary-item"><small>Red</small><b id="sumRed">—</b></div>
+</div></div>
+<div class="card legend"><span><i class="dot" style="background:#171717"></i>Black</span><span><i class="dot" style="background:#269b62"></i>Green</span><span><i class="dot" style="background:#e3ad27"></i>Yellow</span><span><i class="dot" style="background:#ed8b25"></i>Orange</span><span><i class="dot" style="background:#d71920"></i>Red</span></div>
+<div class="card statusline"><span id="centerText">Pilih GPS atau titik manual</span><span>Radius garis lurus · Rute pedestrian mengikuti jalur jalan kaki</span></div>
+<p style="font-size:11px;color:#777">ODP dengan koordinat tidak valid tidak ditampilkan. Cluster marker mengelompokkan ODP yang berdekatan; perbesar peta untuk melihat titik individual.</p>
 </div>
-<div class="card statusline"><span id="count">Menunggu lokasi pusat…</span><span id="centerText">Pilih GPS atau titik manual</span></div>
-<p style="font-size:11px;color:#777">Radius menggunakan jarak garis lurus. Rute jalan kaki dihitung mengikuti jalur pedestrian. ODP dengan koordinat tidak valid tidak ditampilkan.</p>
+<div id="managementView" class="hidden">
+<div class="page-title">Manajemen Pengguna</div>
+<div id="managerPanel" class="card"><b>Persetujuan akun Sales Force</b><div id="pendingList">Memuat akun menunggu persetujuan…</div></div>
+<div class="card"><b>Informasi hak akses</b><p style="margin-bottom:0;color:#666">Menu ini hanya tersedia bagi Manager dan Super Admin. Pengaturan role dan status akun tetap dikendalikan oleh kebijakan database Supabase.</p></div>
+</div>
 </section>
 </main>
 <footer>Developed by THCO Kabupaten Bekasi — 2026</footer>
@@ -57,6 +87,7 @@ footer{text-align:center;color:#8b8e95;font-size:10px;padding:18px}
 <div id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
 const SUPABASE_URL="https://qywbtdchvkbdjzcljykq.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_6JXoGmWw1e3c1TidYlZtEw_qiZvDog-";
@@ -69,39 +100,64 @@ function show(id){$(id).classList.remove('hidden')}function hide(id){$(id).class
 $('showSignup').onclick=e=>{e.preventDefault();hide('loginBox');show('signupBox')};$('showLogin').onclick=e=>{e.preventDefault();hide('signupBox');show('loginBox')};
 $('signupBtn').onclick=async()=>{let full_name=$('regName').value.trim(),email=$('regEmail').value.trim(),password=$('regPass').value;if(!full_name||!email||password.length<8){toast('Lengkapi nama, email, dan password minimal 8 karakter.');return}
 let {error}=await sb.auth.signUp({email,password,options:{data:{full_name,employee_id:$('regNip').value.trim(),phone:$('regPhone').value.trim()}}});if(error){toast(error.message);return}toast('Pendaftaran berhasil. Periksa email jika konfirmasi email diaktifkan. Akun menunggu persetujuan Manager.');hide('signupBox');show('loginBox')};
-$('loginBtn').onclick=async()=>{let {data,error}=await sb.auth.signInWithPassword({email:$('loginEmail').value.trim(),password:$('loginPass').value});if(error){toast(error.message);return}await enterApp(data.user)};
-async function enterApp(user){currentUser=user;let {data,error}=await sb.from('profiles').select('*').eq('id',user.id).single();if(error||!data){toast('Profil belum tersedia: '+(error?.message||''));return}profile=data;
+$('loginBtn').onclick=async()=>{let {data,error}=await sb.auth.signInWithPassword({email:$('loginEmail').value.trim(),password:$('loginPass').value});if(error){toast(error.message);return}if(!data.user?.email_confirmed_at){await sb.auth.signOut();toast('Email belum diverifikasi. Periksa inbox/spam dan klik tautan verifikasi Supabase.');return}await enterApp(data.user)};
+async function enterApp(user){
+if(!user?.email_confirmed_at){await sb.auth.signOut();currentUser=null;profile=null;hide('appView');hide('pendingView');hide('userArea');show('authView');toast('Email belum diverifikasi. Klik tautan verifikasi Supabase sebelum masuk.');return}
+currentUser=user;let {data,error}=await sb.from('profiles').select('*').eq('id',user.id).single();if(error||!data){toast('Profil belum tersedia: '+(error?.message||''));return}profile=data;
 hide('authView');hide('pendingView');hide('appView');hide('userArea');
 if(profile.account_status!=='approved'){show('pendingView');return}
 show('appView');show('userArea');$('userLabel').textContent=profile.full_name||user.email;
-if(profile.role==='manager'||profile.role==='super_admin'){show('managerPanel');loadPending()}
-startSession();initMap()}
+const canManage=profile.role==='manager'||profile.role==='super_admin';
+if(canManage){show('navManagement');loadPending()}else{hide('navManagement')}
+showMapPage();startSession();initMap()}
 async function startSession(){let {data,error}=await sb.from('access_sessions').insert({user_id:currentUser.id}).select('id').single();if(!error)currentSession=data.id}
 async function closeSession(){if(currentSession){await sb.from('access_sessions').update({logged_out_at:new Date().toISOString()}).eq('id',currentSession);currentSession=null}}
 async function logout(){await closeSession();await sb.auth.signOut();currentUser=null;profile=null;hide('appView');hide('pendingView');hide('userArea');show('authView')}
 $('logoutBtn').onclick=logout;$('pendingLogout').onclick=logout;
 window.addEventListener('beforeunload',()=>{if(currentSession)sb.from('access_sessions').update({logged_out_at:new Date().toISOString()}).eq('id',currentSession)});
-function initMap(){if(map){map.remove();map=null}boundaryReady=false;bekasiBoundary=null;map=L.map('map').setView([-6.25,107.1],11);satelliteLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'});streetLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'});satelliteLayer.addTo(map);$('satBtn').classList.add('primary');$('streetBtn').classList.remove('primary');$('satBtn').onclick=()=>{if(map.hasLayer(streetLayer))map.removeLayer(streetLayer);if(!map.hasLayer(satelliteLayer))satelliteLayer.addTo(map);$('satBtn').classList.add('primary');$('streetBtn').classList.remove('primary')};$('streetBtn').onclick=()=>{if(map.hasLayer(satelliteLayer))map.removeLayer(satelliteLayer);if(!map.hasLayer(streetLayer))streetLayer.addTo(map);$('streetBtn').classList.add('primary');$('satBtn').classList.remove('primary')};markers=L.layerGroup().addTo(map);centerLayers=L.layerGroup().addTo(map);routeDecorations=L.layerGroup().addTo(map);loadBekasiBoundary();map.on('click',async e=>{if(routePicking){routePicking=false;if(!boundaryReady||!isInsideBekasi(e.latlng.lat,e.latlng.lng)){toast('Titik awal rute ditolak. Pilih lokasi di dalam Kabupaten Bekasi.');return}await calculateWalkingRoute(e.latlng.lat,e.latlng.lng,'Manual');return}if($('origin').value==='manual'){if(!boundaryReady){toast('Batas Kabupaten Bekasi sedang dimuat. Tunggu sebentar lalu coba lagi.');return}if(!isInsideBekasi(e.latlng.lat,e.latlng.lng)){toast('Titik ditolak. Pilih lokasi di dalam Kabupaten Bekasi.');return}if(await setSearchCenter(e.latlng.lat,e.latlng.lng,'manual'))loadOdps()}})}
+function initMap(){if(map){map.remove();map=null}boundaryReady=false;bekasiBoundary=null;map=L.map('map').setView([-6.25,107.1],11);satelliteLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'});streetLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'});satelliteLayer.addTo(map);$('satBtn').classList.add('primary');$('streetBtn').classList.remove('primary');$('satBtn').onclick=()=>{if(map.hasLayer(streetLayer))map.removeLayer(streetLayer);if(!map.hasLayer(satelliteLayer))satelliteLayer.addTo(map);$('satBtn').classList.add('primary');$('streetBtn').classList.remove('primary')};$('streetBtn').onclick=()=>{if(map.hasLayer(satelliteLayer))map.removeLayer(satelliteLayer);if(!map.hasLayer(streetLayer))streetLayer.addTo(map);$('streetBtn').classList.add('primary');$('satBtn').classList.remove('primary')};markers=L.markerClusterGroup({showCoverageOnHover:false,spiderfyOnMaxZoom:true,disableClusteringAtZoom:17,maxClusterRadius:48,iconCreateFunction:function(cluster){const n=cluster.getChildCount(),size=n<10?38:n<100?44:52;return L.divIcon({html:'<div class="cluster-count" style="width:'+size+'px;height:'+size+'px">'+n.toLocaleString('id-ID')+'</div>',className:'',iconSize:[size,size]})}}).addTo(map);centerLayers=L.layerGroup().addTo(map);routeDecorations=L.layerGroup().addTo(map);loadBekasiBoundary();map.on('click',async e=>{if(routePicking){routePicking=false;if(!boundaryReady||!isInsideBekasi(e.latlng.lat,e.latlng.lng)){toast('Titik awal rute ditolak. Pilih lokasi di dalam Kabupaten Bekasi.');return}await calculateWalkingRoute(e.latlng.lat,e.latlng.lng,'Manual');return}if($('origin').value==='manual'){if(!boundaryReady){toast('Batas Kabupaten Bekasi sedang dimuat. Tunggu sebentar lalu coba lagi.');return}if(!isInsideBekasi(e.latlng.lat,e.latlng.lng)){toast('Titik ditolak. Pilih lokasi di dalam Kabupaten Bekasi.');return}if(await setSearchCenter(e.latlng.lat,e.latlng.lng,'manual'))loadOdps()}})}
 // Memuat polygon administrasi Kabupaten Bekasi dari layanan resmi BIG.
 async function loadBekasiBoundary(){try{const endpoint='https://geoservices.big.go.id/rbi/rest/services/BATASWILAYAH/BATAS_KABKOTA_AR/MapServer/0/query';const params=new URLSearchParams({where:"WADMPR='Jawa Barat'",outFields:'WADMKK,WADMPR',returnGeometry:'true',outSR:'4326',f:'geojson'});const response=await fetch(endpoint+'?'+params.toString());if(!response.ok)throw new Error('HTTP '+response.status);const geo=await response.json();if(!geo.features?.length)throw new Error('Data batas tidak ditemukan');const matches=geo.features.filter(f=>{const p=f.properties||{};const kab=String(p.WADMKK||p.wadmkk||'').toLowerCase();return kab.includes('bekasi')&&!kab.includes('kota')});if(!matches.length)throw new Error('Polygon Kabupaten Bekasi tidak ditemukan pada data BIG');bekasiBoundary={type:'FeatureCollection',features:matches};boundaryLayer=L.geoJSON(bekasiBoundary,{style:{color:'#c8102e',weight:3,opacity:.9,fillColor:'#c8102e',fillOpacity:.035}}).addTo(map);boundaryLayer.bindTooltip('Batas Kabupaten Bekasi');boundaryReady=true;toast('Batas Kabupaten Bekasi berhasil dimuat.');if($('origin').value==='gps')getGPS(false);}catch(err){boundaryReady=false;console.error('Gagal memuat batas Kabupaten Bekasi:',err);toast('Batas wilayah gagal dimuat. Pemilihan titik dinonaktifkan agar lokasi di luar Bekasi tidak diterima. Periksa koneksi internet lalu muat ulang.')}}
 function pointInRing(lat,lon,ring){let inside=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1];const intersects=((yi>lat)!==(yj>lat))&&(lon<(xj-xi)*(lat-yi)/(yj-yi)+xi);if(intersects)inside=!inside;}return inside}
 function pointInPolygonCoords(lat,lon,poly){if(!poly?.length||!pointInRing(lat,lon,poly[0]))return false;for(let i=1;i<poly.length;i++)if(pointInRing(lat,lon,poly[i]))return false;return true}
 function isInsideBekasi(lat,lon){if(!boundaryReady||!bekasiBoundary)return false;for(const f of bekasiBoundary.features){const g=f.geometry;if(!g)continue;if(g.type==='Polygon'&&pointInPolygonCoords(lat,lon,g.coordinates))return true;if(g.type==='MultiPolygon'&&g.coordinates.some(poly=>pointInPolygonCoords(lat,lon,poly)))return true;}return false}
 function drawSearchArea(){if(!map||!center||!centerLayers)return;centerLayers.clearLayers();const ll=[center.lat,center.lon],r=Number($('radius').value);radiusCircle=L.circle(ll,{radius:r,color:'#c8102e',weight:2,opacity:.9,fillColor:'#e63950',fillOpacity:.16}).addTo(centerLayers);centerMarker=L.marker(ll,{title:'Titik pusat pencarian'}).addTo(centerLayers).bindTooltip('Titik pusat pencarian',{direction:'top'});$('centerText').textContent=(center.source==='gps'?'Pusat GPS: ':'Pusat manual: ')+center.lat.toFixed(5)+', '+center.lon.toFixed(5);}
-async function setSearchCenter(lat,lon,source){if(!boundaryReady){toast('Batas Kabupaten Bekasi belum siap. Titik belum dapat digunakan.');return false}if(!isInsideBekasi(lat,lon)){toast('Lokasi ditolak. FIRA hanya dapat digunakan untuk titik di dalam Kabupaten Bekasi.');return false}center={lat,lon,source};drawSearchArea();map.setView([lat,lon],Math.max(map.getZoom(),14));$('count').textContent='Titik pusat dipilih · radius '+(Number($('radius').value)>=1000?(Number($('radius').value)/1000).toFixed(1).replace('.',',')+' KM':$('radius').value+' M');return true;}
+async function setSearchCenter(lat,lon,source){if(!boundaryReady){toast('Batas Kabupaten Bekasi belum siap. Titik belum dapat digunakan.');return false}if(!isInsideBekasi(lat,lon)){toast('Lokasi ditolak. FRIDA hanya dapat digunakan untuk titik di dalam Kabupaten Bekasi.');return false}center={lat,lon,source};drawSearchArea();map.setView([lat,lon],Math.max(map.getZoom(),14));$('count').textContent='Titik pusat dipilih · radius '+(Number($('radius').value)>=1000?(Number($('radius').value)/1000).toFixed(1).replace('.',',')+' KM':$('radius').value+' M');return true;}
 function getGPS(auto=true){if(!navigator.geolocation){toast('Browser tidak mendukung GPS');return}if(!boundaryReady){toast('Batas Kabupaten Bekasi belum siap. Tunggu sebentar lalu coba lagi.');return}navigator.geolocation.getCurrentPosition(async pos=>{if(await setSearchCenter(pos.coords.latitude,pos.coords.longitude,'gps'))loadOdps()},err=>{if(!auto)toast('GPS gagal: '+err.message)}, {enableHighAccuracy:true,timeout:15000})}
 $('gpsBtn').onclick=()=>{$('origin').value='gps';getGPS(false)};$('origin').onchange=()=>{if($('origin').value==='gps')getGPS(false);else{center=null;if(centerLayers)centerLayers.clearLayers();$('centerText').textContent='Mode titik manual aktif · klik lokasi di peta';$('count').textContent='Menunggu titik pusat manual…';toast(boundaryReady?'Mode pilih titik aktif. Klik lokasi di dalam Kabupaten Bekasi.':'Batas wilayah sedang dimuat. Tunggu sebentar.')}};
 $('radius').oninput=()=>{$('radiusLabel').textContent=Number($('radius').value)>=1000?(Number($('radius').value)/1000).toFixed(1).replace('.',',')+' KM':$('radius').value+' M';if(center)drawSearchArea()};
-$('refreshBtn').onclick=loadOdps;$('statusFilter').onchange=loadOdps;
-async function loadOdps(){if(!center){toast('Tentukan titik pusat dengan GPS atau klik lokasi di peta terlebih dahulu.');return}drawSearchArea();markers.clearLayers();let status=$('statusFilter').value;let {data,error}=await sb.rpc('odps_within_radius',{center_lat:center.lat,center_lon:center.lon,radius_m:Number($('radius').value),status_filter:status?[status]:null});if(error){toast('Gagal mengambil ODP: '+error.message);return}
-let shown=0;for(const o of data||[]){if(!o.latitude||!o.longitude)continue;let marker=L.circleMarker([o.latitude,o.longitude],{radius:6,weight:1,color:'#fff',fillColor:colors[o.status_2]||'#888',fillOpacity:.95});marker.on('click',()=>openProfile(o));marker.addTo(markers);shown++}
-$('count').textContent=shown.toLocaleString('id-ID')+' ODP dalam radius · hasil server';if(center)map.fitBounds(radiusCircle.getBounds(),{padding:[20,20],maxZoom:16});}
+$('refreshBtn').onclick=loadOdps;$('statusFilter').querySelectorAll('input').forEach(cb=>cb.onchange=()=>{if(center)loadOdps()});
+function selectedStatuses(){return [...$('statusFilter').querySelectorAll('input:checked')].map(x=>x.value)}
+function showMapPage(){show('mapView');hide('managementView');$('navMap').classList.add('active');$('navManagement').classList.remove('active');setTimeout(()=>{if(map)map.invalidateSize()},80)}
+function showManagementPage(){if(!(profile?.role==='manager'||profile?.role==='super_admin')){toast('Kamu tidak memiliki akses ke menu manajemen.');return}hide('mapView');show('managementView');$('navManagement').classList.add('active');$('navMap').classList.remove('active')}
+$('navMap').onclick=showMapPage;$('navManagement').onclick=showManagementPage;
+async function loadOdps(){
+if(!center){toast('Tentukan titik pusat dengan GPS atau klik lokasi di peta terlebih dahulu.');return}
+drawSearchArea();markers.clearLayers();
+const statuses=selectedStatuses();if(!statuses.length){toast('Pilih minimal satu STATUS 2.');return}
+const {data,error}=await sb.rpc('odps_within_radius',{center_lat:center.lat,center_lon:center.lon,radius_m:Number($('radius').value),status_filter:statuses.length===5?null:statuses});
+if(error){toast('Gagal mengambil ODP: '+error.message);return}
+const summary={Black:0,Green:0,Yellow:0,Orange:0,Red:0};let shown=0;
+for(const o of data||[]){
+const lat=Number(o.latitude),lon=Number(o.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;
+const status=String(o.status_2||'').trim();if(summary[status]!==undefined)summary[status]++;
+const marker=L.circleMarker([lat,lon],{radius:6,weight:1,color:'#fff',fillColor:colors[status]||'#888',fillOpacity:.95});
+marker.on('click',()=>openProfile(o));marker.addTo(markers);shown++;
+}
+$('sumTotal').textContent=shown.toLocaleString('id-ID');
+for(const s of Object.keys(summary))$('sum'+s).textContent=summary[s].toLocaleString('id-ID');
+$('count').textContent=shown.toLocaleString('id-ID')+' ODP ditemukan dalam radius '+(Number($('radius').value)>=1000?(Number($('radius').value)/1000).toLocaleString('id-ID')+' KM':$('radius').value+' m');
+if(center)map.fitBounds(radiusCircle.getBounds(),{padding:[20,20],maxZoom:16});
+}
 let searchRequest=0;
 $('mapSearchBtn').onclick=runMapSearch;
 $('mapSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();runMapSearch()}if(e.key==='Escape')hide('searchResults')});
 document.addEventListener('click',e=>{if(!e.target.closest('.map-search'))hide('searchResults')});
 function addSearchResult(title,subtitle,kind,onSelect){const box=$('searchResults');const b=document.createElement('button');b.className='search-result';b.type='button';const k=document.createElement('span');k.className='search-kind';k.textContent=kind;const t=document.createElement('strong');t.textContent=title;const sm=document.createElement('small');sm.textContent=subtitle||'';b.append(k,document.createElement('br'),t,sm);b.onclick=()=>{hide('searchResults');onSelect()};box.append(b)}
-async function runMapSearch(){const q=$('mapSearch').value.trim();if(q.length<2){toast('Ketik minimal 2 karakter untuk mencari.');return}const req=++searchRequest,box=$('searchResults');box.replaceChildren();show('searchResults');const loading=document.createElement('div');loading.style.padding='12px';loading.textContent='Mencari ODP dan lokasi…';box.append(loading);
+async function runMapSearch(){const q=$('mapSearch').value.trim();
+const coord=q.match(/^\\s*(-?\\d+(?:\\.\\d+)?)\\s*[,;\\s]\\s*(-?\\d+(?:\\.\\d+)?)\\s*$/);
+if(coord){const lat=Number(coord[1]),lon=Number(coord[2]);if(!Number.isFinite(lat)||!Number.isFinite(lon)){toast('Format koordinat tidak valid.');return}if(!boundaryReady||!isInsideBekasi(lat,lon)){toast('Koordinat ditolak. Titik harus berada di dalam Kabupaten Bekasi.');return}map.setView([lat,lon],18);L.marker([lat,lon]).addTo(map).bindPopup('Koordinat pilihan<br>'+lat.toFixed(6)+', '+lon.toFixed(6)).openPopup();toast('Peta diarahkan ke koordinat. Pusat radius ODP tidak berubah.');hide('searchResults');return}
+if(q.length<2){toast('Ketik minimal 2 karakter untuk mencari.');return}const req=++searchRequest,box=$('searchResults');box.replaceChildren();show('searchResults');const loading=document.createElement('div');loading.style.padding='12px';loading.textContent='Mencari ODP dan lokasi…';box.append(loading);
 try{const term='%'+q.replace(/[,%()]/g,' ').trim()+'%';const fields='odp_name,latitude,longitude,sto,sto_desc,sifa_desa,sifa_kecamatan,sifa_kabupaten,branch,cluster,city,status_2,total_port,used_port,avai_port,tanggal_go_live';const {data,error}=await sb.from('odps').select(fields).eq('map_valid',true).or(['odp_name.ilike.'+term,'sto.ilike.'+term,'sto_desc.ilike.'+term,'sifa_desa.ilike.'+term,'sifa_kecamatan.ilike.'+term,'sifa_kabupaten.ilike.'+term,'branch.ilike.'+term,'cluster.ilike.'+term,'city.ilike.'+term].join(',')).limit(10);if(req!==searchRequest)return;box.replaceChildren();if(error)throw error;for(const o of data||[]){addSearchResult(o.odp_name,[o.sto_desc||o.sto,o.sifa_kecamatan,o.sifa_desa].filter(Boolean).join(' · '),'ODP',()=>{const lat=Number(o.latitude),lon=Number(o.longitude);if(!isInsideBekasi(lat,lon)){toast('Koordinat ODP ini berada di luar batas Kabupaten Bekasi.');return}map.setView([lat,lon],18);const marker=L.circleMarker([lat,lon],{radius:9,weight:2,color:'#fff',fillColor:colors[o.status_2]||'#888',fillOpacity:1}).addTo(markers);marker.bindTooltip(o.odp_name).openTooltip();marker.on('click',()=>openProfile(o));openProfile(o)})}
 // Search public place names (roads, housing, landmarks) within Bekasi only.
 let geo=[];try{const url='https://nominatim.openstreetmap.org/search?'+new URLSearchParams({q:q+', Kabupaten Bekasi, Jawa Barat, Indonesia',format:'jsonv2',limit:'6',addressdetails:'1',viewbox:'106.85,-5.85,107.35,-6.55',bounded:'1'});const r=await fetch(url,{headers:{'Accept':'application/json'}});if(r.ok)geo=await r.json()}catch(e){console.warn('Geocoding lokasi tidak tersedia',e)}if(req!==searchRequest)return;for(const g of geo){const lat=Number(g.lat),lon=Number(g.lon);if(!Number.isFinite(lat)||!Number.isFinite(lon)||!isInsideBekasi(lat,lon))continue;const title=g.name||g.display_name.split(',')[0];const subtitle=g.display_name;addSearchResult(title,subtitle,'Lokasi / Jalan / Perumahan',()=>{map.setView([lat,lon],17);L.marker([lat,lon]).addTo(markers).bindPopup(title).openPopup();toast('Peta diarahkan ke '+title+'. Titik pusat radius tidak berubah.')})}
