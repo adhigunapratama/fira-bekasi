@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Bundle GPS plugin
+        run: npx esbuild src/gps.js --bundle --outfile=www/assets/gps.bundle.js --format=iife
+        
       - name: Add Android platform
         run: npx cap add android
 
