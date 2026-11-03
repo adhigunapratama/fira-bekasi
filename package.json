@@ -16,6 +16,7 @@
   "devDependencies": {
   "@capacitor/cli": "^8.0.0",
   "typescript": "^5.8.3",
-  "esbuild": "^0.25.0"
+  "esbuild": "^0.25.0",
+  "@capacitor/assets": "^3.0.5"
   }
 }
