@@ -7,7 +7,7 @@ ISI PAKET
 - assets/frida-logo.png              Logo resmi FRIDA
 - supabase/migrations/001_frida_v14.sql
                                       Migrasi SQL Supabase
-- supabase/functions/sf-login/index.ts
+- supabase/functions/login-with-sf-id/index.ts
                                       Edge Function login dengan ID SF
 - supabase/config.toml               Konfigurasi Edge Function
 - index_v1.3_backup.html             Salinan sumber v1.3 untuk pembanding
@@ -51,18 +51,18 @@ LANGKAH 2 — JALANKAN MIGRASI SQL
 LANGKAH 3 — DEPLOY EDGE FUNCTION sf-login
 Edge Function diperlukan agar login ID SF dapat mencari akun dan memverifikasi password tanpa membuka alamat email akun ke browser.
 
-A. Buat/deploy function dengan nama: sf-login
-B. Gunakan kode dari: supabase/functions/sf-login/index.ts
+A. Gunakan function yang sudah dibuat di Dashboard dengan nama: login-with-sf-id
+B. Gunakan kode dari: supabase/functions/login-with-sf-id/index.ts
 C. Pastikan function memakai konfigurasi verify_jwt = false dari supabase/config.toml karena fungsi ini dipanggil sebelum pengguna login.
 D. Tambahkan Secrets/Environment Variables pada Supabase Edge Functions:
    SUPABASE_URL
-   SUPABASE_ANON_KEY
-   SUPABASE_SERVICE_ROLE_KEY
+   SUPABASE_PUBLISHABLE_KEYS
+   SUPABASE_SECRET_KEYS
 
 CATATAN KEAMANAN:
-- SUPABASE_SERVICE_ROLE_KEY hanya boleh disimpan sebagai Secret di sisi server/Edge Function.
-- Jangan pernah menaruh service_role key di index.html, GitHub, atau browser.
-- Jangan mengganti publishable/anon key aplikasi dengan service_role key.
+- SUPABASE_SECRET_KEYS hanya boleh diakses sebagai Secret di sisi server/Edge Function.
+- Jangan pernah menaruh secret key di index.html, GitHub, atau browser.
+- Jangan mengganti publishable/anon key aplikasi dengan secret key.
 
 LANGKAH 4 — PASANG APLIKASI DI GITHUB PAGES
 - Buat backup file index.html dan folder assets yang sedang live.
