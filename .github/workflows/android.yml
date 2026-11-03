@@ -63,6 +63,9 @@ jobs:
           print("GPS permissions configured.")
           PY
 
+      - name: Generate Android app icons
+        run: npx capacitor-assets generate --android --iconBackgroundColor '#C8102E' --iconBackgroundColorDark '#C8102E'
+        
       - name: Sync Capacitor
         run: npx cap sync android
 
