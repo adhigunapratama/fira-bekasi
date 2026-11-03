@@ -13,7 +13,7 @@ header{height:62px;background:var(--red);color:#fff;display:flex;align-items:cen
 .brand{font-size:25px;font-weight:850;letter-spacing:1px}.brand small{display:block;font-size:9px;font-weight:500;letter-spacing:.8px}
 button,input,select{font:inherit}button{border:1px solid #ddd;background:#fff;border-radius:9px;padding:9px 12px;cursor:pointer;font-weight:650}button.primary{background:var(--red);border-color:var(--red);color:#fff}
 main{max-width:1400px;margin:auto;padding:14px}.card{background:white;border-radius:14px;padding:14px;box-shadow:0 2px 10px #0000000a;margin-bottom:12px}
-.auth{max-width:430px;margin:8vh auto}.auth h1{color:var(--red);margin:0}.auth input{width:100%;padding:12px;border:1px solid #ddd;border-radius:9px;margin:5px 0 12px}
+.auth{max-width:430px;margin:8vh auto}.auth h1{color:var(--red);margin:0}.auth input{width:100%;padding:12px;border:1px solid #ddd;border-radius:9px;margin:5px 0 12px}.auth a{color:var(--red)}#profileView label{font-size:13px;font-weight:700;color:#555}
 .hidden{display:none!important}.toolbar{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.toolbar label{font-size:11px;color:var(--muted);font-weight:700;display:block}.toolbar select{padding:9px;border:1px solid #ddd;border-radius:9px}
 .radius{flex:1;min-width:220px}.radius input{width:100%;accent-color:var(--red)}.radius strong{color:var(--red);font-size:17px}
 #map{height:68vh;min-height:430px;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px #0002}
@@ -124,7 +124,9 @@ footer{text-align:center;color:#8b8e95;font-size:10px;padding:18px}
 <main>
 <section id="authView" class="card auth">
 <h1>FRIDA</h1><div style="color:#777;margin-bottom:16px">Fiber Routing &amp; Intelligence Data Assistant</div>
-<div id="loginBox"><h3>Masuk</h3><label>Email</label><input id="loginEmail" type="email" autocomplete="username"><label>Password</label><input id="loginPass" type="password" autocomplete="current-password"><button class="primary" id="loginBtn" style="width:100%">Masuk ke FRIDA</button><p>Belum punya akun? <a href="#" id="showSignup">Daftar Sales Force</a></p></div>
+<div id="loginBox"><h3>Masuk</h3><label>Email</label><input id="loginEmail" type="email" autocomplete="username"><label>Password</label><input id="loginPass" type="password" autocomplete="current-password"><button class="primary" id="loginBtn" style="width:100%">Masuk ke FRIDA</button><p><a href="#" id="showForgot">Lupa Password?</a></p><p>Belum punya akun? <a href="#" id="showSignup">Daftar Sales Force</a></p></div>
+<div id="forgotBox" class="hidden"><h3>Lupa Password</h3><p>Masukkan email akun FRIDA. Kami akan mengirim tautan untuk membuat password baru.</p><label>Email terdaftar</label><input id="forgotEmail" type="email" autocomplete="email"><button class="primary" id="sendResetBtn" style="width:100%">Kirim Tautan Reset</button><p><a href="#" id="forgotBack">Kembali ke login</a></p></div>
+<div id="resetBox" class="hidden"><h3>Buat Password Baru</h3><p>Masukkan password baru untuk akun FRIDA Anda.</p><label>Password baru (minimal 8 karakter)</label><input id="resetPass1" type="password" autocomplete="new-password"><label>Konfirmasi password baru</label><input id="resetPass2" type="password" autocomplete="new-password"><button class="primary" id="saveResetBtn" style="width:100%">Simpan Password Baru</button></div>
 <div id="signupBox" class="hidden"><h3>Registrasi Sales Force</h3><label>Nama lengkap</label><input id="regName"><label>ID Karyawan</label><input id="regNip"><label>Nomor HP</label><input id="regPhone"><label>Email</label><input id="regEmail" type="email"><label>Password (minimal 8 karakter)</label><input id="regPass" type="password"><button class="primary" id="signupBtn" style="width:100%">Daftar</button><p><a href="#" id="showLogin">Kembali ke login</a></p></div>
 <p style="font-size:11px;color:#888">Akun baru perlu persetujuan Manager sebelum dapat mengakses peta.</p>
 </section>
@@ -133,7 +135,23 @@ footer{text-align:center;color:#8b8e95;font-size:10px;padding:18px}
 <nav class="app-nav" aria-label="Navigasi utama">
 <button id="navMap" class="active" type="button">🗺️ Peta ODP</button>
 <button id="navManagement" class="hidden" type="button">⚙️ Manajemen</button>
+<button id="navProfile" type="button">👤 Profil Saya</button>
 </nav>
+<div id="profileView" class="hidden">
+<div class="card" style="max-width:650px">
+<div class="page-title">Profil Saya</div>
+<p><b>Nama:</b> <span id="profileName">—</span></p>
+<p><b>Email:</b> <span id="profileEmail">—</span></p>
+<p><b>Role:</b> <span id="profileRole">—</span></p>
+<hr style="border:0;border-top:1px solid #eee;margin:18px 0">
+<div class="page-title">Ganti Password</div>
+<p style="color:#666">Untuk keamanan, masukkan password saat ini sebelum membuat password baru.</p>
+<label>Password saat ini</label><input id="currentPassword" type="password" autocomplete="current-password" style="display:block;width:100%;padding:12px;border:1px solid #ddd;border-radius:9px;margin:5px 0 12px">
+<label>Password baru (minimal 8 karakter)</label><input id="newPassword" type="password" autocomplete="new-password" style="display:block;width:100%;padding:12px;border:1px solid #ddd;border-radius:9px;margin:5px 0 12px">
+<label>Konfirmasi password baru</label><input id="confirmNewPassword" type="password" autocomplete="new-password" style="display:block;width:100%;padding:12px;border:1px solid #ddd;border-radius:9px;margin:5px 0 12px">
+<button class="primary" id="changePasswordBtn">Perbarui Password</button>
+</div>
+</div>
 <div id="mapView">
 <div class="card toolbar">
 <div><label>TITIK PUSAT</label><select id="origin"><option value="gps">Lokasi GPS saya</option><option value="manual">Pilih titik di peta</option></select></div>
@@ -177,7 +195,13 @@ let currentUser=null, profile=null, map=null, markers=null, center=null, selecte
 const colors={Black:"#171717",Green:"#269b62",Yellow:"#e3ad27",Orange:"#ed8b25",Red:"#d71920"};
 function toast(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',3500)}
 function show(id){$(id).classList.remove('hidden')}function hide(id){$(id).classList.add('hidden')}
-$('showSignup').onclick=e=>{e.preventDefault();hide('loginBox');show('signupBox')};$('showLogin').onclick=e=>{e.preventDefault();hide('signupBox');show('loginBox')};
+function showAuthPanel(id){['loginBox','signupBox','forgotBox','resetBox'].forEach(x=>hide(x));show(id)}
+$('showSignup').onclick=e=>{e.preventDefault();showAuthPanel('signupBox')};
+$('showLogin').onclick=e=>{e.preventDefault();showAuthPanel('loginBox')};
+$('showForgot').onclick=e=>{e.preventDefault();$('forgotEmail').value=$('loginEmail').value.trim();showAuthPanel('forgotBox')};
+$('forgotBack').onclick=e=>{e.preventDefault();showAuthPanel('loginBox')};
+$('sendResetBtn').onclick=async()=>{const email=$('forgotEmail').value.trim();if(!email){toast('Masukkan email terdaftar terlebih dahulu.');return}const redirectTo=window.location.origin+window.location.pathname+'?reset=1';const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo});if(error){toast('Gagal mengirim tautan: '+error.message);return}toast('Jika email terdaftar, tautan pemulihan akan dikirim. Periksa inbox dan folder spam.');showAuthPanel('loginBox')};
+$('saveResetBtn').onclick=async()=>{const p1=$('resetPass1').value,p2=$('resetPass2').value;if(p1.length<8){toast('Password baru minimal 8 karakter.');return}if(p1!==p2){toast('Konfirmasi password belum sama.');return}const {error}=await sb.auth.updateUser({password:p1});if(error){toast('Password belum berhasil diperbarui: '+error.message);return}toast('Password berhasil diperbarui. Silakan masuk kembali.');await sb.auth.signOut();$('resetPass1').value='';$('resetPass2').value='';showAuthPanel('loginBox')};
 $('signupBtn').onclick=async()=>{let full_name=$('regName').value.trim(),email=$('regEmail').value.trim(),password=$('regPass').value;if(!full_name||!email||password.length<8){toast('Lengkapi nama, email, dan password minimal 8 karakter.');return}
 let {error}=await sb.auth.signUp({email,password,options:{data:{full_name,employee_id:$('regNip').value.trim(),phone:$('regPhone').value.trim()}}});if(error){toast(error.message);return}toast('Pendaftaran berhasil. Periksa email jika konfirmasi email diaktifkan. Akun menunggu persetujuan Manager.');hide('signupBox');show('loginBox')};
 $('loginBtn').onclick=async()=>{let {data,error}=await sb.auth.signInWithPassword({email:$('loginEmail').value.trim(),password:$('loginPass').value});if(error){toast(error.message);return}if(!data.user?.email_confirmed_at){await sb.auth.signOut();toast('Email belum diverifikasi. Periksa inbox/spam dan klik tautan verifikasi Supabase.');return}await enterApp(data.user)};
@@ -187,6 +211,7 @@ currentUser=user;let {data,error}=await sb.from('profiles').select('*').eq('id',
 hide('authView');hide('pendingView');hide('appView');hide('userArea');
 if(profile.account_status!=='approved'){show('pendingView');return}
 show('appView');show('userArea');$('userLabel').textContent=profile.full_name||user.email;
+$('profileName').textContent=profile.full_name||'—';$('profileEmail').textContent=user.email||'—';$('profileRole').textContent=profile.role==='super_admin'?'Super Admin':profile.role==='manager'?'Manager':'Sales Force';
 const canManage=profile.role==='manager'||profile.role==='super_admin';
 if(canManage){show('navManagement');loadPending()}else{hide('navManagement')}
 showMapPage();startSession();initMap()}
@@ -208,9 +233,12 @@ $('gpsBtn').onclick=()=>{$('origin').value='gps';getGPS(false)};$('origin').onch
 $('radius').oninput=()=>{$('radiusLabel').textContent=Number($('radius').value)>=1000?(Number($('radius').value)/1000).toFixed(1).replace('.',',')+' KM':$('radius').value+' M';if(center)drawSearchArea()};
 $('refreshBtn').onclick=loadOdps;$('statusFilter').querySelectorAll('input').forEach(cb=>cb.onchange=()=>{if(center)loadOdps()});
 function selectedStatuses(){return [...$('statusFilter').querySelectorAll('input:checked')].map(x=>x.value)}
-function showMapPage(){show('mapView');hide('managementView');$('navMap').classList.add('active');$('navManagement').classList.remove('active');setTimeout(()=>{if(map)map.invalidateSize()},80)}
-function showManagementPage(){if(!(profile?.role==='manager'||profile?.role==='super_admin')){toast('Kamu tidak memiliki akses ke menu manajemen.');return}hide('mapView');show('managementView');$('navManagement').classList.add('active');$('navMap').classList.remove('active')}
-$('navMap').onclick=showMapPage;$('navManagement').onclick=showManagementPage;
+function setActiveNav(id){['navMap','navManagement','navProfile'].forEach(x=>$(x).classList.toggle('active',x===id))}
+function showMapPage(){show('mapView');hide('managementView');hide('profileView');setActiveNav('navMap');setTimeout(()=>{if(map)map.invalidateSize()},80)}
+function showManagementPage(){if(!(profile?.role==='manager'||profile?.role==='super_admin')){toast('Kamu tidak memiliki akses ke menu manajemen.');return}hide('mapView');hide('profileView');show('managementView');setActiveNav('navManagement')}
+function showProfilePage(){hide('mapView');hide('managementView');show('profileView');setActiveNav('navProfile')}
+$('navMap').onclick=showMapPage;$('navManagement').onclick=showManagementPage;$('navProfile').onclick=showProfilePage;
+$('changePasswordBtn').onclick=async()=>{const current=$('currentPassword').value,newPass=$('newPassword').value,confirm=$('confirmNewPassword').value;if(!current||!newPass||!confirm){toast('Lengkapi semua kolom password.');return}if(newPass.length<8){toast('Password baru minimal 8 karakter.');return}if(newPass!==confirm){toast('Konfirmasi password belum sama.');return}if(newPass===current){toast('Password baru harus berbeda dari password saat ini.');return}const btn=$('changePasswordBtn');btn.disabled=true;try{const {error:verifyError}=await sb.auth.signInWithPassword({email:currentUser.email,password:current});if(verifyError)throw new Error('Password saat ini tidak sesuai.');const {error:updateError}=await sb.auth.updateUser({password:newPass});if(updateError)throw updateError;$('currentPassword').value='';$('newPassword').value='';$('confirmNewPassword').value='';toast('Password berhasil diperbarui.')}catch(err){toast('Gagal mengganti password: '+err.message)}finally{btn.disabled=false}};
 async function loadOdps(){
 if(!center){toast('Tentukan titik pusat dengan GPS atau klik lokasi di peta terlebih dahulu.');return}
 drawSearchArea();markers.clearLayers();
@@ -252,7 +280,7 @@ function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 function decodePolyline6(str){let i=0,lat=0,lon=0,out=[];while(i<str.length){let r=0,sh=0,b;do{b=str.charCodeAt(i++)-63;r|=(b&31)<<sh;sh+=5}while(b>=32);lat+=(r&1)?~(r>>1):(r>>1);r=0;sh=0;do{b=str.charCodeAt(i++)-63;r|=(b&31)<<sh;sh+=5}while(b>=32);lon+=(r&1)?~(r>>1):(r>>1);out.push([lon/1e6,lat/1e6])}return out}
 $('googleBtn').onclick=()=>{if(selectedOdp)window.open(`https://www.google.com/maps/dir/?api=1&destination=${selectedOdp.latitude},${selectedOdp.longitude}&travelmode=walking`,'_blank')};
 async function loadPending(){let {data,error}=await sb.from('profiles').select('id,full_name,employee_id,phone,created_at').eq('role','sf').eq('account_status','pending').order('created_at');if(error){$('pendingList').textContent=error.message;return}if(!data.length){$('pendingList').textContent='Tidak ada pendaftaran yang menunggu.';return}let table=document.createElement('table');table.innerHTML='<tr><th>Nama</th><th>ID SF</th><th>Aksi</th></tr>';data.forEach(p=>{let tr=document.createElement('tr'),td=document.createElement('td');td.textContent=p.full_name;let id=document.createElement('td');id.textContent=p.employee_id||'—';let act=document.createElement('td'),b=document.createElement('button');b.textContent='Setujui';b.onclick=async()=>{let {error}=await sb.rpc('set_sf_account_status',{target_user_id:p.id,new_status:'approved'});if(error)toast(error.message);else{toast('Akun disetujui');loadPending()}};act.append(b);tr.append(td,id,act);table.append(tr)});$('pendingList').replaceChildren(table)}
-sb.auth.getSession().then(({data})=>{if(data.session)enterApp(data.session.user)});
-sb.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'){hide('appView');hide('pendingView');show('authView')}});
+sb.auth.getSession().then(({data})=>{if(new URLSearchParams(window.location.search).get('reset')==='1'){hide('loginBox');hide('signupBox');hide('forgotBox');show('resetBox');show('authView');return}if(data.session)enterApp(data.session.user)});
+sb.auth.onAuthStateChange((event,session)=>{if(event==='PASSWORD_RECOVERY'){show('authView');showAuthPanel('resetBox')}if(event==='SIGNED_OUT'){hide('appView');hide('pendingView');hide('userArea');show('authView')}});
 </script>
 </body></html>
