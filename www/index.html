@@ -59,7 +59,8 @@ footer{text-align:center;color:#8b8e95;font-size:10px;padding:18px}
   .toolbar>.radius,
   .toolbar>div:nth-of-type(2),
   .toolbar>div:nth-of-type(3),
-  .toolbar>#refreshBtn{
+  .toolbar>#refreshBtn,
+   .toolbar>#reloadPageBtn{
     grid-column:1 / -1;
     width:100%;
     min-width:0;
@@ -168,6 +169,7 @@ footer{text-align:center;color:#8b8e95;font-size:10px;padding:18px}
 <label><input type="checkbox" value="Black" checked>Black</label><label><input type="checkbox" value="Green" checked>Green</label><label><input type="checkbox" value="Yellow" checked>Yellow</label><label><input type="checkbox" value="Orange" checked>Orange</label><label><input type="checkbox" value="Red" checked>Red</label>
 </div></div>
 <button id="refreshBtn" class="primary">Cari ODP</button>
+<button id="reloadPageBtn" type="button">↻ Refresh Peta</button>
 </div>
 <div class="card map-search"><input id="mapSearch" type="search" placeholder="Cari nama ODP, desa, kecamatan, STO, jalan, atau perumahan…" autocomplete="off"><button id="mapSearchBtn" class="primary">Cari</button><div id="searchResults" class="search-results hidden"></div></div>
 <div id="map"><div class="map-switch"><button id="satBtn" class="primary">Satelit</button><button id="streetBtn">Peta Jalan</button></div></div>
@@ -234,32 +236,10 @@ function pointInPolygonCoords(lat,lon,poly){if(!poly?.length||!pointInRing(lat,l
 function isInsideBekasi(lat,lon){if(!boundaryReady||!bekasiBoundary)return false;for(const f of bekasiBoundary.features){const g=f.geometry;if(!g)continue;if(g.type==='Polygon'&&pointInPolygonCoords(lat,lon,g.coordinates))return true;if(g.type==='MultiPolygon'&&g.coordinates.some(poly=>pointInPolygonCoords(lat,lon,poly)))return true;}return false}
 function drawSearchArea(){if(!map||!center||!centerLayers)return;centerLayers.clearLayers();const ll=[center.lat,center.lon],r=Number($('radius').value);radiusCircle=L.circle(ll,{radius:r,color:'#c8102e',weight:2,opacity:.9,fillColor:'#e63950',fillOpacity:.16}).addTo(centerLayers);centerMarker=L.marker(ll,{title:'Titik pusat pencarian'}).addTo(centerLayers).bindTooltip('Titik pusat pencarian',{direction:'top'});$('centerText').textContent=(center.source==='gps'?'Pusat GPS: ':'Pusat manual: ')+center.lat.toFixed(5)+', '+center.lon.toFixed(5);}
 async function setSearchCenter(lat,lon,source){if(!boundaryReady){toast('Batas Kabupaten Bekasi belum siap. Titik belum dapat digunakan.');return false}if(!isInsideBekasi(lat,lon)){toast('Lokasi ditolak. FRIDA hanya dapat digunakan untuk titik di dalam Kabupaten Bekasi.');return false}center={lat,lon,source};drawSearchArea();map.setView([lat,lon],Math.max(map.getZoom(),14));$('count').textContent='Titik pusat dipilih · radius '+(Number($('radius').value)>=1000?(Number($('radius').value)/1000).toFixed(1).replace('.',',')+' KM':$('radius').value+' M');return true;}
-async function getGPS(auto=true){
-  if(!window.FRIDA_GPS){
-    toast('Modul GPS belum siap. Silakan muat ulang aplikasi.');
-    return;
-  }
-
-  if(!boundaryReady){
-    toast('Batas Kabupaten Bekasi belum siap. Tunggu sebentar lalu coba lagi.');
-    return;
-  }
-
-  try{
-    const pos=await window.FRIDA_GPS.getCurrentPosition();
-    const lat=pos.coords.latitude;
-    const lon=pos.coords.longitude;
-
-    if(await setSearchCenter(lat,lon,'gps')){
-      loadOdps();
-    }
-  }catch(err){
-    toast('GPS gagal: '+err.message);
-  }
-}
+function getGPS(auto=true){if(!navigator.geolocation){toast('Browser tidak mendukung GPS');return}if(!boundaryReady){toast('Batas Kabupaten Bekasi belum siap. Tunggu sebentar lalu coba lagi.');return}navigator.geolocation.getCurrentPosition(async pos=>{if(await setSearchCenter(pos.coords.latitude,pos.coords.longitude,'gps'))loadOdps()},err=>{if(!auto)toast('GPS gagal: '+err.message)}, {enableHighAccuracy:true,timeout:15000})}
 $('gpsBtn').onclick=()=>{$('origin').value='gps';getGPS(false)};$('origin').onchange=()=>{if($('origin').value==='gps')getGPS(false);else{center=null;if(centerLayers)centerLayers.clearLayers();$('centerText').textContent='Mode titik manual aktif · klik lokasi di peta';$('count').textContent='Menunggu titik pusat manual…';toast(boundaryReady?'Mode pilih titik aktif. Klik lokasi di dalam Kabupaten Bekasi.':'Batas wilayah sedang dimuat. Tunggu sebentar.')}};
 $('radius').oninput=()=>{$('radiusLabel').textContent=Number($('radius').value)>=1000?(Number($('radius').value)/1000).toFixed(1).replace('.',',')+' KM':$('radius').value+' M';if(center)drawSearchArea()};
-$('refreshBtn').onclick=loadOdps;$('statusFilter').querySelectorAll('input').forEach(cb=>cb.onchange=()=>{if(center)loadOdps()});
+$('refreshBtn').onclick=loadOdps;$('reloadPageBtn').onclick=()=>window.location.reload();$('statusFilter').querySelectorAll('input').forEach(cb=>cb.onchange=()=>{if(center)loadOdps()});
 function selectedStatuses(){return [...$('statusFilter').querySelectorAll('input:checked')].map(x=>x.value)}
 function setActiveNav(id){['navMap','navManagement','navProfile'].forEach(x=>$(x).classList.toggle('active',x===id))}
 function showMapPage(){show('mapView');hide('managementView');hide('profileView');setActiveNav('navMap');setTimeout(()=>{if(map)map.invalidateSize()},80)}
@@ -299,33 +279,7 @@ if(!box.children.length){const empty=document.createElement('div');empty.style.p
 }catch(err){if(req!==searchRequest)return;box.replaceChildren();const msg=document.createElement('div');msg.style.padding='12px';msg.textContent='Pencarian gagal: '+(err.message||'Periksa koneksi internet.');box.append(msg)}}
 function openProfile(o){selectedOdp=o;$('pName').textContent=o.odp_name;$('pStatus').textContent='STATUS 2: '+o.status_2;$('pMetrics').innerHTML='';const vals=[['Tanggal Go Live',o.tanggal_go_live||'—'],['STO',o.sto_desc||'—'],['Kecamatan',o.sifa_kecamatan||'—'],['Desa',o.sifa_desa||'—'],['Total port',o.total_port??'—'],['Used port',o.used_port??'—'],['Available port',o.avai_port??'—'],['Jarak garis lurus',o.distance_m?Math.round(o.distance_m)+' m':'—']];for(const [k,v] of vals){let el=document.createElement('div');el.className='metric';let sm=document.createElement('small');sm.textContent=k;let b=document.createElement('b');b.textContent=v;el.append(sm,b);$('pMetrics').append(el)}$('routeInfo').textContent='Pilih titik awal rute menggunakan GPS atau titik manual pada peta.';$('profileModal').classList.add('show')}
 $('closeProfile').onclick=()=>$('profileModal').classList.remove('show');
-$('routeGpsBtn').onclick=async()=>{
-  if(!selectedOdp)return;
-
-  if(!window.FRIDA_GPS){
-    toast('Modul GPS belum siap. Muat ulang aplikasi.');
-    return;
-  }
-
-  $('routeInfo').textContent='Meminta izin dan mengambil lokasi GPS…';
-
-  $('routeGpsBtn').disabled=true;
-
-  try{
-    const pos=await window.FRIDA_GPS.getCurrentPosition();
-
-    await calculateWalkingRoute(
-      pos.coords.latitude,
-      pos.coords.longitude,
-      'GPS'
-    );
-  }catch(err){
-    $('routeInfo').textContent='GPS gagal: '+err.message;
-    toast('GPS gagal: '+err.message);
-  }finally{
-    $('routeGpsBtn').disabled=false;
-  }
-};
+$('routeGpsBtn').onclick=()=>{if(!selectedOdp)return;if(!navigator.geolocation){toast('Browser tidak mendukung GPS');return}$('routeInfo').textContent='Mengambil lokasi GPS…';navigator.geolocation.getCurrentPosition(pos=>calculateWalkingRoute(pos.coords.latitude,pos.coords.longitude,'GPS'),err=>{$('routeInfo').textContent='GPS gagal: '+err.message},{enableHighAccuracy:true,timeout:20000})};
 $('routeManualBtn').onclick=()=>{if(!selectedOdp)return;routePicking=true;$('profileModal').classList.remove('show');toast('Klik titik awal perjalanan pada peta. Titik harus berada di Kabupaten Bekasi.')};
 async function calculateWalkingRoute(lat,lon,source){if(!selectedOdp)return;if(!boundaryReady||!isInsideBekasi(lat,lon)){toast('Titik awal rute harus berada di dalam Kabupaten Bekasi.');return}const destLat=Number(selectedOdp.latitude),destLon=Number(selectedOdp.longitude);if(!Number.isFinite(destLat)||!Number.isFinite(destLon)||!isInsideBekasi(destLat,destLon)){toast('Koordinat tujuan ODP tidak valid atau di luar Kabupaten Bekasi.');return}$('profileModal').classList.add('show');$('routeInfo').textContent='Menghitung rute jalan kaki…';$('routeGpsBtn').disabled=true;$('routeManualBtn').disabled=true;try{const response=await fetch('https://valhalla1.openstreetmap.de/route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({locations:[{lat,lon},{lat:destLat,lon:destLon}],costing:'pedestrian',units:'kilometers',shape_format:'geojson'})});if(!response.ok)throw new Error('Layanan rute tidak merespons (HTTP '+response.status+')');const data=await response.json();if(data.error||!data.trip?.legs?.length)throw new Error(data.error||'Rute pedestrian tidak ditemukan');const leg=data.trip.legs[0],shape=leg.shape;let coords;if(shape?.type==='LineString')coords=shape.coordinates;else if(typeof shape==='string')coords=decodePolyline6(shape);else throw new Error('Geometri rute tidak dikenali');if(routeLayer)map.removeLayer(routeLayer);routeDecorations.clearLayers();routeLayer=L.geoJSON({type:'Feature',geometry:{type:'LineString',coordinates:coords}},{style:{color:'#1769d2',weight:6,opacity:.95}}).addTo(map);const bounds=routeLayer.getBounds(),mid=routeLayer.getBounds().getCenter();const km=Number(leg.summary?.length??data.trip.summary?.length),mins=Number(leg.summary?.time??data.trip.summary?.time)/60;if(!Number.isFinite(km)||!Number.isFinite(mins))throw new Error('Jarak atau estimasi waktu tidak tersedia');const dist=km<1?Math.round(km*1000)+' m':km.toFixed(2)+' km';const time=Math.max(1,Math.round(mins))+' menit';const routeLabel=L.marker(mid,{interactive:false,icon:L.divIcon({className:'',html:'<div class="route-label">'+dist+'</div>',iconSize:null})}).addTo(routeDecorations);L.marker([lat,lon],{icon:L.divIcon({className:'',html:'<div class="start-label">Titik Awal</div>',iconSize:null}),interactive:false}).addTo(routeDecorations);L.marker([destLat,destLon],{icon:L.divIcon({className:'',html:'<div class="odp-label">'+escapeHtml(selectedOdp.odp_name)+'</div>',iconSize:null}),interactive:false}).addTo(routeDecorations);map.fitBounds(bounds.pad(.18));$('routeInfo').textContent='Dari '+source+' · '+dist+' · estimasi '+time+'. Nama ODP dan jarak ditampilkan pada peta.';toast('Rute jalan kaki berhasil ditemukan.')}catch(err){console.error(err);$('routeInfo').textContent='Rute jalan kaki tidak tersedia: '+err.message;toast('Rute pedestrian tidak dapat dihitung.')}finally{$('routeGpsBtn').disabled=false;$('routeManualBtn').disabled=false}}
 function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -338,5 +292,4 @@ async function loadManagement(){const fields='id,full_name,employee_id,account_s
 sb.auth.getSession().then(({data})=>{if(new URLSearchParams(window.location.search).get('reset')==='1'){hide('loginBox');hide('signupBox');hide('forgotBox');show('resetBox');show('authView');return}if(data.session)enterApp(data.session.user)});
 sb.auth.onAuthStateChange((event,session)=>{if(event==='PASSWORD_RECOVERY'){show('authView');showAuthPanel('resetBox')}if(event==='SIGNED_OUT'){hide('appView');hide('pendingView');hide('accountStatusView');hide('userArea');show('authView')}});
 </script>
-<script src="assets/gps.bundle.js"></script>
 </body></html>
