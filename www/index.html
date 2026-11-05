@@ -252,13 +252,18 @@ async function loadOdps(){
 if(!center){toast('Tentukan titik pusat dengan GPS atau klik lokasi di peta terlebih dahulu.');return}
 drawSearchArea();markers.clearLayers();
 const statuses=selectedStatuses();if(!statuses.length){toast('Pilih minimal satu STATUS 2.');return}
-const summary={Black:0,Green:0,Yellow:0,Orange:0,Red:0};let shown=0;const pageSize=1000;let offset=0;
-try{while(true){const {data,error}=await sb.rpc('odps_within_radius',{center_lat:center.lat,center_lon:center.lon,radius_m:Number($('radius').value),status_filter:statuses.length===5?null:statuses}).range(offset,offset+pageSize-1);if(error)throw error;const rows=data||[];for(const o of rows){
+const summary={Black:0,Green:0,Yellow:0,Orange:0,Red:0};let shown=0;
+try{
+const {data,error}=await sb.rpc('odps_within_radius_batch',{center_lat:center.lat,center_lon:center.lon,radius_m:Number($('radius').value),status_filter:statuses.length===5?null:statuses});
+if(error)throw error;
+const rows=Array.isArray(data)?(data[0]?.odps||[]):[];
+for(const o of rows){
 const lat=Number(o.latitude),lon=Number(o.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;
 const status=String(o.status_2||'').trim();if(summary[status]!==undefined)summary[status]++;
 const marker=L.circleMarker([lat,lon],{radius:6,weight:1,color:'#fff',fillColor:colors[status]||'#888',fillOpacity:.95});
 marker.on('click',()=>openProfile(o));marker.addTo(markers);shown++;
-}if(rows.length<pageSize)break;offset+=pageSize;} }catch(error){toast('Gagal mengambil ODP: '+error.message);return}
+}
+}catch(error){toast('Gagal mengambil ODP: '+error.message);return}
 $('sumTotal').textContent=shown.toLocaleString('id-ID');
 for(const s of Object.keys(summary))$('sum'+s).textContent=summary[s].toLocaleString('id-ID');
 $('count').textContent=shown.toLocaleString('id-ID')+' ODP ditemukan dalam radius '+(Number($('radius').value)>=1000?(Number($('radius').value)/1000).toLocaleString('id-ID')+' KM':$('radius').value+' m');
