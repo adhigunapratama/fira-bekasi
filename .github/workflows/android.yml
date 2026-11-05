@@ -77,12 +77,12 @@ jobs:
           ./gradlew assembleDebug
 
       - name: Rename APK with version
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk "FRIDA-v1.4.2-Performance-Optimization.apk"
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk "FRIDA-v1.4.3-Boundary-Marker-Update.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: FRIDA-v1.4.2-Performance-Optimization-APK
-          path: FRIDA-v1.4.2-Performance-Optimization.apk
+          name: FRIDA-v1.4.3-Boundary-Marker-Update-APK
+          path: FRIDA-v1.4.3-Boundary-Marker-Update.apk
           if-no-files-found: error
           retention-days: 14
