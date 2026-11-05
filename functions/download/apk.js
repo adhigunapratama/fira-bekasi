@@ -6,7 +6,7 @@ export async function onRequest({ env }) {
     const apk = await kv.get("frida-latest.apk", { type: "arrayBuffer" });
     if (!apk) return new Response("APK FRIDA belum tersedia. Jalankan build Android terbaru terlebih dahulu.", { status: 404, headers });
     const storedVersion = await kv.get("frida-version.txt");
-    const version = storedVersion && /^\\d+\\.\\d+\\.\\d+(?:[-+][A-Za-z0-9.-]+)?$/.test(storedVersion.trim())
+    const version = storedVersion && /^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/.test(storedVersion.trim())
       ? storedVersion.trim()
       : "latest";
     return new Response(apk, {
