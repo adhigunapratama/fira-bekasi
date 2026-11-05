@@ -1,6 +1,6 @@
 {
   "name": "frida-android-v14",
-  "version": "1.4.0",
+  "version": "1.4.3",
   "private": true,
   "description": "FRIDA Android wrapper for THCO Kabupaten Bekasi",
   "scripts": {
@@ -9,14 +9,14 @@
     "android:open": "npx cap open android"
   },
   "dependencies": {
-  "@capacitor/android": "^8.0.0",
-  "@capacitor/core": "^8.0.0",
-  "@capacitor/geolocation": "^8.0.0"
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/geolocation": "^8.0.0"
   },
   "devDependencies": {
-  "@capacitor/cli": "^8.0.0",
-  "typescript": "^5.8.3",
-  "esbuild": "^0.25.0",
-  "@capacitor/assets": "^3.0.5"
+    "@capacitor/cli": "^8.0.0",
+    "typescript": "^5.8.3",
+    "esbuild": "^0.25.0",
+    "@capacitor/assets": "^3.0.5"
   }
 }
