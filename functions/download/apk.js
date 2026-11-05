@@ -12,7 +12,7 @@ export async function onRequest({ env }) {
     return new Response(apk, {
       headers: {
         "Content-Type": "application/vnd.android.package-archive",
-        "Content-Disposition": `attachment; filename="FRIDA-${version}.apk"`,
+        "Content-Disposition": `attachment; filename="FRIDA-v${version}.apk"`,
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff"
       }
