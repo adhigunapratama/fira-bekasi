@@ -70,6 +70,10 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Read app version
+        id: app-version
+        run: echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+
       - name: Build debug APK
         working-directory: android
         run: |
@@ -79,7 +83,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: FRIDA-v1.4-debug-APK
+          name: FRIDA-v${{ steps.app-version.outputs.version }}-debug-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
@@ -101,4 +105,5 @@ jobs:
             exit 0
           fi
           curl --fail-with-body --silent --show-error -X PUT "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/storage/kv/namespaces/$CF_KV_NAMESPACE_ID/values/frida-latest.apk" -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/vnd.android.package-archive" --data-binary "@$APK"
-          echo "Latest APK published to Cloudflare KV."
+          curl --fail-with-body --silent --show-error -X PUT "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/storage/kv/namespaces/$CF_KV_NAMESPACE_ID/values/frida-version.txt" -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: text/plain" --data-binary "${{ steps.app-version.outputs.version }}"
+          echo "FRIDA v${{ steps.app-version.outputs.version }} published to Cloudflare KV."
