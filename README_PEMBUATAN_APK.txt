@@ -1,10 +1,10 @@
-FRIDA ANDROID v1.4 — PAKET PEMBUATAN APK
+FRIDA ANDROID v2.0.0 — MULTI-CLUSTER EXPANSION
 THCO KABUPATEN BEKASI
 ========================================
 
 STATUS PAKET
 - Ini adalah proyek pembungkus Android (Capacitor), bukan file APK jadi.
-- Konten aplikasi berasal dari FRIDA v1.4 Connected Login ID SF yang telah diberikan.
+- Konten aplikasi berasal dari FRIDA v2.0.0 Multi-Cluster Expansion yang telah diberikan.
 - URL Supabase dan publishable key tetap seperti pada aplikasi web.
 - Secret key tidak disertakan dan tidak boleh dimasukkan ke aplikasi Android.
 - Aplikasi web/GitHub Pages yang sekarang tetap dapat digunakan terpisah.
@@ -26,7 +26,7 @@ PERSYARATAN KOMPUTER WINDOWS
 4. Koneksi internet untuk mengunduh dependency pertama kali.
 
 LANGKAH A — SIAPKAN PROYEK
-1. Ekstrak seluruh ZIP ke folder sederhana, misalnya C:\FRIDA_Android_v1.4
+1. Ekstrak seluruh ZIP ke folder sederhana, misalnya C:\FRIDA_Android_v2.0.0
 2. Instal Node.js dan Android Studio.
 3. Restart Windows setelah instalasi bila diminta.
 4. Klik dua kali PERSIAPKAN_ANDROID.bat.
