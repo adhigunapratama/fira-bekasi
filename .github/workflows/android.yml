@@ -39,6 +39,16 @@ jobs:
 
       - name: Bundle GPS plugin
         run: npx esbuild src/gps.js --bundle --outfile=www/assets/gps.bundle.js --format=iife
+
+      - name: Bundle web libraries locally for Android
+        run: |
+          npx esbuild src/vendor.js --bundle --outfile=www/assets/vendor.bundle.js --format=iife
+          mkdir -p www/assets/vendor/leaflet www/assets/vendor/markercluster
+          cp node_modules/leaflet/dist/leaflet.css www/assets/vendor/leaflet/leaflet.css
+          cp -R node_modules/leaflet/dist/images www/assets/vendor/leaflet/
+          cp node_modules/leaflet.markercluster/dist/MarkerCluster.css www/assets/vendor/markercluster/
+          cp node_modules/leaflet.markercluster/dist/MarkerCluster.Default.css www/assets/vendor/markercluster/
+          cp -R node_modules/leaflet.markercluster/dist/images www/assets/vendor/markercluster/
         
       - name: Add Android platform
         run: npx cap add android
