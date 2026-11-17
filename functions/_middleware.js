@@ -26,6 +26,9 @@ function loginPage(error="") {
 }
 export async function onRequest({request,env,next}) {
   const url = new URL(request.url);
+  // The password gate belongs only to the dedicated download portal.
+  // Keep the main FRIDA web app and other Pages projects public to their own app login.
+  if (url.hostname !== "frida-portal.pages.dev") return next();
   if (!env.FRIDA_PASSWORD || !env.SESSION_SECRET) {
     return new Response("Portal belum dikonfigurasi. Tambahkan FRIDA_PASSWORD dan SESSION_SECRET di Cloudflare Pages > Settings > Variables and Secrets.",{status:503,headers:headers({"Content-Type":"text/plain; charset=utf-8"})});
   }
