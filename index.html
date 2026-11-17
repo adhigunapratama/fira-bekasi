@@ -377,8 +377,8 @@ const rows=Array.isArray(data)?(data[0]?.odps||[]):[];
 for(const o of rows){
 const lat=Number(o.latitude),lon=Number(o.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;
 const status=String(o.status_2||'').trim();if(summary[status]!==undefined)summary[status]++;
-const marker=L.circleMarker([lat,lon],{radius:9,weight:2,color:'#fff',fillColor:colors[status]||'#888',fillOpacity:1});
-marker.on('click',()=>{const zoom=map.getZoom();map.setView(marker.getLatLng(),zoom,{animate:false});openProfile(o)});marker.addTo(markers);shown++;
+const marker=L.circleMarker([lat,lon],{radius:9,weight:2,color:'#fff',fillColor:colors[status]||'#888',fillOpacity:1,bubblingMouseEvents:false});
+marker.on('click',e=>{if(e.originalEvent)L.DomEvent.stopPropagation(e.originalEvent);openProfile(o)});marker.addTo(markers);shown++;
 }
 }catch(error){toast('Gagal mengambil ODP: '+error.message);return}
 $('sumTotal').textContent=shown.toLocaleString('id-ID');
