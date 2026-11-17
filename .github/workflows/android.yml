@@ -93,8 +93,8 @@ jobs:
           path = Path("android/app/build.gradle")
           content = path.read_text()
           version_name, version_code = sys.argv[1], sys.argv[2]
-          content, n1 = re.subn(r'versionCode\s+\d+, f'versionCode {version_code}', content, count=1)
-          content, n2 = re.subn(r'versionName\\s+"[^"]+"', f'versionName "{version_name}"', content, count=1)
+          content, n1 = re.subn(r"versionCode\s+\d+", f"versionCode {version_code}", content, count=1)
+          content, n2 = re.subn(r'versionName\s+"[^"]+"', f'versionName "{version_name}"', content, count=1)
           if n1 != 1 or n2 != 1:
               raise SystemExit("Tidak dapat memperbarui versionCode/versionName pada build.gradle")
           path.write_text(content)
