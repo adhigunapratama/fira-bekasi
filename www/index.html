@@ -306,12 +306,42 @@ $('profileName').textContent=profile.full_name||'—';$('profileEmail').textCont
 const canManage=profile.role==='manager'||profile.role==='super_admin';
 if(canManage){show('navManagement');loadManagement()}else{hide('navManagement')}
 if(profile.role==='super_admin'){show('managerAssignmentSection');loadManagerCandidates()}else{hide('managerAssignmentSection')}
-showMapPage();startSession();initMap()}
-async function startSession(){let {data,error}=await sb.from('access_sessions').insert({user_id:currentUser.id}).select('id').single();if(!error)currentSession=data.id}
-async function closeSession(){if(currentSession){await sb.from('access_sessions').update({logged_out_at:new Date().toISOString()}).eq('id',currentSession);currentSession=null}}
-async function logout(){await closeSession();await sb.auth.signOut();currentUser=null;profile=null;hide('appView');hide('pendingView');hide('accountStatusView');hide('userArea');show('authView')}
+showMapPage();await startSession();initMap()}
+let sessionStartedAt=null,lastUserActivity=Date.now(),idleWarningShown=false,idleTimer=null,heartbeatTimer=null,sessionEnding=false;
+const IDLE_LIMIT_MS=30*60*1000,IDLE_WARNING_MS=25*60*1000,MAX_SESSION_MS=7*24*60*60*1000;
+async function writeActivity(eventType,metadata={}){if(!currentUser||!currentSession)return;try{await sb.from('user_activity_logs').insert({user_id:currentUser.id,session_id:currentSession,event_type:eventType,metadata})}catch(err){console.warn('Activity log failed:',err.message)}}
+async function startSession(){
+ const now=new Date(),maxExpiry=new Date(now.getTime()+MAX_SESSION_MS);
+ let {data:existing,error:readError}=await sb.from('access_sessions').select('id,logged_in_at,last_seen_at,expires_at').eq('user_id',currentUser.id).is('logged_out_at',null).gt('expires_at',now.toISOString()).order('logged_in_at',{ascending:false}).limit(1).maybeSingle();
+ if(readError)console.warn('Read session failed:',readError.message);
+ if(existing){currentSession=existing.id;sessionStartedAt=new Date(existing.logged_in_at).getTime();await sb.from('access_sessions').update({last_seen_at:now.toISOString()}).eq('id',currentSession)}
+ else{
+  const {data,error}=await sb.from('access_sessions').insert({user_id:currentUser.id,last_seen_at:now.toISOString(),expires_at:maxExpiry.toISOString()}).select('id,logged_in_at').single();
+  if(error){toast('Gagal membuat sesi penggunaan: '+error.message);return}
+  currentSession=data.id;sessionStartedAt=new Date(data.logged_in_at).getTime();await writeActivity('login');
+ }
+ lastUserActivity=Date.now();idleWarningShown=false;sessionEnding=false;
+ clearInterval(idleTimer);clearInterval(heartbeatTimer);
+ idleTimer=setInterval(checkSessionLimits,10000);
+ heartbeatTimer=setInterval(async()=>{if(currentSession&&!sessionEnding){const nowIso=new Date().toISOString();const {error}=await sb.from('access_sessions').update({last_seen_at:nowIso}).eq('id',currentSession).is('logged_out_at',null);if(error)console.warn('Session heartbeat failed:',error.message)}},60000);
+}
+function registerUserActivity(){if(!currentSession||sessionEnding)return;lastUserActivity=Date.now();if(idleWarningShown){idleWarningShown=false;toast('Sesi tetap aktif. Aktivitas terdeteksi kembali.')} }
+function checkSessionLimits(){
+ if(!currentSession||sessionEnding)return;
+ const now=Date.now(),age=now-sessionStartedAt,idle=now-lastUserActivity;
+ if(age>=MAX_SESSION_MS){endSession('session_expired','Sesi FRIDA telah mencapai batas maksimum 7 hari. Silakan login kembali.');return}
+ if(idle>=IDLE_LIMIT_MS){endSession('idle_timeout','Sesi berakhir karena tidak ada aktivitas selama 30 menit. Silakan login kembali.');return}
+ if(idle>=IDLE_WARNING_MS&&!idleWarningShown){idleWarningShown=true;toast('Sesi akan berakhir dalam 5 menit karena tidak ada aktivitas. Lakukan aktivitas untuk tetap masuk.')}
+}
+async function closeSession(reason='manual_logout'){
+ if(currentSession){const now=new Date();await sb.from('access_sessions').update({logged_out_at:now.toISOString(),last_seen_at:now.toISOString(),duration_seconds:Math.max(0,Math.floor((now.getTime()-sessionStartedAt)/1000)),ended_reason:reason}).eq('id',currentSession).is('logged_out_at',null);await writeActivity('logout',{reason});currentSession=null}
+ clearInterval(idleTimer);clearInterval(heartbeatTimer);idleTimer=null;heartbeatTimer=null;
+}
+async function endSession(reason,message){if(sessionEnding)return;sessionEnding=true;await closeSession(reason);await sb.auth.signOut();currentUser=null;profile=null;hide('appView');hide('pendingView');hide('accountStatusView');hide('userArea');show('authView');toast(message)}
+async function logout(){await closeSession('manual_logout');await sb.auth.signOut();currentUser=null;profile=null;hide('appView');hide('pendingView');hide('accountStatusView');hide('userArea');show('authView')}
 $('logoutBtn').onclick=logout;$('pendingLogout').onclick=logout;$('accountStatusLogout').onclick=logout;
-window.addEventListener('beforeunload',()=>{if(currentSession)sb.from('access_sessions').update({logged_out_at:new Date().toISOString()}).eq('id',currentSession)});
+['pointerdown','keydown','touchstart','scroll'].forEach(evt=>document.addEventListener(evt,registerUserActivity,{passive:true}));
+window.addEventListener('beforeunload',()=>{if(currentSession){const now=new Date();sb.from('access_sessions').update({logged_out_at:now.toISOString(),last_seen_at:now.toISOString(),duration_seconds:Math.max(0,Math.floor((now.getTime()-sessionStartedAt)/1000)),ended_reason:'manual_logout'}).eq('id',currentSession).is('logged_out_at',null)}});
 function initMap(){if(map){map.remove();map=null}boundaryReady=false;territoryBoundaries=[];territoryLayers=[];map=L.map('map').setView(activeClusterCode==='KARPUR'?[-6.45,107.35]:[-6.25,107.1],11);satelliteLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'});streetLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'});satelliteLayer.addTo(map);$('satBtn').classList.add('primary');$('streetBtn').classList.remove('primary');$('satBtn').onclick=()=>{if(map.hasLayer(streetLayer))map.removeLayer(streetLayer);if(!map.hasLayer(satelliteLayer))satelliteLayer.addTo(map);$('satBtn').classList.add('primary');$('streetBtn').classList.remove('primary')};$('streetBtn').onclick=()=>{if(map.hasLayer(satelliteLayer))map.removeLayer(satelliteLayer);if(!map.hasLayer(streetLayer))streetLayer.addTo(map);$('streetBtn').classList.add('primary');$('satBtn').classList.remove('primary')};markers=L.markerClusterGroup({showCoverageOnHover:false,spiderfyOnMaxZoom:true,disableClusteringAtZoom:17,maxClusterRadius:48,iconCreateFunction:function(cluster){const n=cluster.getChildCount(),size=n<10?38:n<100?44:52;return L.divIcon({html:'<div class="cluster-count" style="width:'+size+'px;height:'+size+'px">'+n.toLocaleString('id-ID')+'</div>',className:'',iconSize:[size,size]})}}).addTo(map);centerLayers=L.layerGroup().addTo(map);routeDecorations=L.layerGroup().addTo(map);loadTerritoryBoundaries();map.on('click',async e=>{if(routePicking){routePicking=false;if(!boundaryReady||!isInsideTerritory(e.latlng.lat,e.latlng.lng)){toast('Titik awal rute ditolak. Pilih lokasi di dalam wilayah cluster kamu.');return}await calculateWalkingRoute(e.latlng.lat,e.latlng.lng,'Manual');return}if($('origin').value==='manual'){if(!boundaryReady){toast('Batas wilayah cluster kamu sedang dimuat. Tunggu sebentar lalu coba lagi.');return}if(!isInsideTerritory(e.latlng.lat,e.latlng.lng)){toast('Titik ditolak. Pilih lokasi di dalam wilayah cluster kamu.');return}if(await setSearchCenter(e.latlng.lat,e.latlng.lng,'manual'))loadOdps()}})}
 // Memuat polygon administrasi sesuai cluster akun dari GeoJSON lokal.
 function requiredTerritories(){if(profile?.role==='super_admin')return ['BEKASI','KARAWANG','PURWAKARTA'];if(activeClusterCode==='BEKASI')return ['BEKASI'];if(activeClusterCode==='KARPUR')return ['KARAWANG','PURWAKARTA'];return []}
