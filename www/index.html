@@ -235,7 +235,7 @@ footer{text-align:center;color:#8b8e95;font-size:10px;padding:18px}
 <div class="card toolbar">
 <div><label>TITIK PUSAT</label><select id="origin"><option value="gps">Lokasi GPS saya</option><option value="manual">Pilih titik di peta</option></select></div>
 <button id="gpsBtn">Gunakan GPS</button>
-<div class="radius"><label>RADIUS PENCARIAN ODP <strong id="radiusLabel">500 M</strong></label><input id="radius" type="range" min="100" max="5000" step="100" value="500"></div>
+<div class="radius"><label>RADIUS PENCARIAN ODP <strong id="radiusLabel">500 M</strong></label><input id="radius" type="range" min="100" max="5000" step="50" value="500"></div>
 <div><label>FILTER OKUPANSI ODP</label><div class="status-filter" id="statusFilter">
 <label><input type="checkbox" value="Black" checked>Black</label><label><input type="checkbox" value="Green" checked>Green</label><label><input type="checkbox" value="Yellow" checked>Yellow</label><label><input type="checkbox" value="Orange" checked>Orange</label><label><input type="checkbox" value="Red" checked>Red</label>
 </div></div>
@@ -374,7 +374,7 @@ const rows=Array.isArray(data)?(data[0]?.odps||[]):[];
 for(const o of rows){
 const lat=Number(o.latitude),lon=Number(o.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;
 const status=String(o.status_2||'').trim();if(summary[status]!==undefined)summary[status]++;
-const marker=L.circleMarker([lat,lon],{radius:7.2,weight:1,color:'#fff',fillColor:colors[status]||'#888',fillOpacity:.95});
+const marker=L.circleMarker([lat,lon],{radius:11,weight:2,color:'#fff',fillColor:colors[status]||'#888',fillOpacity:.98});
 marker.on('click',()=>openProfile(o));marker.addTo(markers);shown++;
 }
 }catch(error){toast('Gagal mengambil ODP: '+error.message);return}
