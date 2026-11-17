@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'www/**'
+      - 'src/vendor.js'
       - 'package.json'
       - 'capacitor.config.ts'
       - '.github/workflows/android.yml'
