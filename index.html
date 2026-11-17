@@ -124,6 +124,50 @@ footer{text-align:center;color:#8b8e95;font-size:10px;padding:18px}
 .auth-logo-wrap{width:100%;display:flex;justify-content:center;align-items:center;margin:0 auto 18px;overflow:hidden}
 .auth-logo{display:block;width:100%;max-width:460px;height:auto;object-fit:contain}
 @media(max-width:650px){.auth-logo-wrap{margin-bottom:14px}.auth-logo{max-width:100%}}
+
+/* FRIDA mobile UX: Manager cluster assignment form */
+#managerAssignmentSection:not(.hidden){
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:8px;
+  width:100%;
+  max-width:480px;
+  padding:4px 0 12px;
+}
+#managerAssignmentSection h3,
+#managerAssignmentSection p{margin:0;line-height:1.45}
+#managerAssignmentSection label{
+  display:block;
+  width:100%;
+  margin:2px 0 -4px;
+  font-size:13px;
+  font-weight:650;
+  color:#555;
+}
+#managerAssignmentSection select{
+  display:block;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  padding:10px 12px;
+  border:1px solid #ddd;
+  border-radius:9px;
+  background:#fff;
+  color:var(--dark);
+}
+#managerAssignmentSection #assignManagerBtn{
+  display:block;
+  width:100%;
+  margin-top:2px;
+}
+#managerAssignmentSection p:last-child{
+  color:var(--muted);
+  font-size:11px!important;
+}
+@media(max-width:650px){
+  #managerAssignmentSection:not(.hidden){max-width:100%}
+}
+
 </style>
 </head>
 <body>
