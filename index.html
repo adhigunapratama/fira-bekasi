@@ -188,6 +188,10 @@ footer{text-align:center;color:#8b8e95;font-size:10px;padding:18px}
 #polygonTableWrap table th{background:#f5f5f6;position:sticky;top:0;white-space:nowrap}
 #polygonTableWrap tbody tr{cursor:pointer}#polygonTableWrap tbody tr:hover{background:#fff5f6}
 @media(max-width:650px){#polygonMap{height:62vh;min-height:380px}#polygonView .toolbar>div,#polygonView .toolbar>button{width:100%}}
+
+#polygonMapSearchWrap{position:relative;margin-top:0}
+#polygonMapSearchWrap .search-results{top:48px;right:86px}
+@media(max-width:650px){#polygonMapSearchWrap .search-results{right:0;top:48px}}
 </style>
 </head>
 <body>
@@ -225,6 +229,7 @@ footer{text-align:center;color:#8b8e95;font-size:10px;padding:18px}
 <button id="polygonClearBtn" type="button">Hapus Polygon</button>
 <button id="polygonRefreshBtn" type="button">↻ Muat Ulang Data</button>
 </div>
+<div class="card map-search" id="polygonMapSearchWrap"><input id="polygonMapSearch" type="search" placeholder="Cari nama ODP, desa, kecamatan, STO, jalan, atau perumahan…" autocomplete="off"><button id="polygonMapSearchBtn" class="primary" type="button">Cari</button><div id="polygonMapSearchResults" class="search-results hidden"></div></div>
 <div id="polygonMap"><div class="map-switch"><button id="polygonSatBtn" class="primary" type="button">Satelit</button><button id="polygonStreetBtn" type="button">Peta Jalan</button></div></div>
 </div>
 <div class="card">
@@ -461,23 +466,45 @@ async function assignOrganikTsel(userId,fullName){if(profile?.role!=='super_admi
 async function loadManagement(){const fields='id,full_name,employee_id,account_status,created_at,cluster_id,clusters(code)';const pending=await sb.from('profiles').select(fields).eq('role','sf').eq('account_status','pending').order('created_at');if(pending.error){$('pendingList').textContent=pending.error.message}else{$('pendingList').replaceChildren(makeUserTable(pending.data||[],'pending'))}const users=await sb.from('profiles').select(fields).eq('role','sf').neq('account_status','pending').order('full_name');if(users.error){$('approvedList').textContent=users.error.message;return}const ids=(users.data||[]).map(x=>x.id);let emailById={};if(ids.length){const {data:authUsers,error:authError}=await sb.rpc('manager_sf_email_list',{target_user_ids:ids});if(!authError)for(const u of authUsers||[])emailById[u.id]=u.email}const rows=(users.data||[]).map(x=>({...x,email:emailById[x.id]||'—'}));$('approvedList').replaceChildren(makeUserTable(rows,'users'));if(profile?.role==='super_admin'){const organik=await sb.from('profiles').select(fields).eq('role','organik_tsel').order('full_name');if(organik.error){$('organikList').textContent=organik.error.message}else{const list=document.createElement('div');if(!organik.data?.length){list.textContent='Belum ada akun Organik TSEL.'}else{const ul=document.createElement('ul');for(const p of organik.data){const li=document.createElement('li');li.textContent=(p.full_name||'Tanpa nama')+' · '+(p.employee_id||'—')+' · '+(p.clusters?.code==='KARPUR'?'KarPur':'Bekasi')+' · '+p.account_status;ul.append(li)}list.append(ul)}$('organikList').replaceChildren(list)}}}
 
 
-let polygonMap=null,polygonBaseSat=null,polygonBaseStreet=null,polygonDrawnItems=null,polygonResults=[],polygonAllOdp=null,polygonMarkers=null,polygonActiveLayer=null;
+let polygonMap=null,polygonBaseSat=null,polygonBaseStreet=null,polygonDrawnItems=null,polygonResults=[],polygonAllOdp=null,polygonMarkers=null,polygonActiveLayer=null,polygonSearchMarker=null;
 function canUsePolygonFeature(){return profile?.account_status==='approved'&&['super_admin','organik_tsel'].includes(profile?.role)}
 function showPolygonPage(){
  if(!canUsePolygonFeature()){toast('Analisis ODP Polygon hanya tersedia untuk Super Admin dan Organik TSEL.');return}
  hide('mapView');hide('managementView');hide('profileView');hide('activityView');show('polygonView');setActiveNav('navPolygon');
  setTimeout(()=>{initPolygonMap();if(polygonMap)polygonMap.invalidateSize()},100);
 }
+async function loadPolygonBoundaries(){
+ const files={BEKASI:'www/data/bekasi-boundary.geojson',KARAWANG:'www/data/karawang-boundary.geojson',PURWAKARTA:'www/data/purwakarta-boundary.geojson'};
+ const labels={BEKASI:'Kabupaten Bekasi',KARAWANG:'Kabupaten Karawang',PURWAKARTA:'Kabupaten Purwakarta'};
+ const styles={BEKASI:'#c8102e',KARAWANG:'#e87524',PURWAKARTA:'#8e44ad'};
+ const bounds=L.latLngBounds([]);
+ for(const code of ['BEKASI','KARAWANG','PURWAKARTA']){
+  let response=null,lastError=null;
+  for(const path of [files[code],files[code].slice(4)]){
+   try{const candidate=await fetch(path);if(candidate.ok){response=candidate;break}lastError=new Error(path+' · HTTP '+candidate.status)}catch(e){lastError=e}
+  }
+  if(!response)throw new Error(labels[code]+' · '+(lastError?.message||'file tidak dapat dibaca'));
+  const geo=await response.json();
+  if(!geo.features?.length)throw new Error('Data batas '+labels[code]+' tidak ditemukan.');
+  const expected=code==='BEKASI'?'bekasi':code.toLowerCase();
+  const matches=geo.features.filter(f=>String((f.properties||{}).WADMKK||'').toLowerCase().includes(expected));
+  if(!matches.length)throw new Error('Polygon '+labels[code]+' tidak cocok dengan isi GeoJSON.');
+  const layer=L.geoJSON({type:'FeatureCollection',features:matches},{style:{color:styles[code],weight:3,opacity:.95,fillColor:styles[code],fillOpacity:.035}}).addTo(polygonMap);
+  layer.bindTooltip(labels[code]);const b=layer.getBounds();if(b.isValid())bounds.extend(b);
+ }
+ if(bounds.isValid())polygonMap.fitBounds(bounds.pad(.04));
+}
 function initPolygonMap(){
  if(!canUsePolygonFeature())return;
  if(polygonMap){polygonMap.invalidateSize();return}
- polygonMap=L.map('polygonMap').setView([-6.25,107.1],11);
+ polygonMap=L.map('polygonMap').setView([-6.25,107.1],10);
  polygonBaseSat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'}).addTo(polygonMap);
  polygonBaseStreet=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'});
  $('polygonSatBtn').onclick=()=>{if(polygonMap.hasLayer(polygonBaseStreet))polygonMap.removeLayer(polygonBaseStreet);if(!polygonMap.hasLayer(polygonBaseSat))polygonBaseSat.addTo(polygonMap);$('polygonSatBtn').classList.add('primary');$('polygonStreetBtn').classList.remove('primary')};
  $('polygonStreetBtn').onclick=()=>{if(polygonMap.hasLayer(polygonBaseSat))polygonMap.removeLayer(polygonBaseSat);if(!polygonMap.hasLayer(polygonBaseStreet))polygonBaseStreet.addTo(polygonMap);$('polygonStreetBtn').classList.add('primary');$('polygonSatBtn').classList.remove('primary')};
  polygonDrawnItems=new L.FeatureGroup().addTo(polygonMap);
  polygonMarkers=L.layerGroup().addTo(polygonMap);
+ polygonSearchMarker=L.layerGroup().addTo(polygonMap);
  const drawControl=new L.Control.Draw({position:'topleft',draw:{polyline:false,rectangle:false,circle:false,circlemarker:false,marker:false,polygon:{allowIntersection:false,showArea:true,shapeOptions:{color:'#c8102e',weight:3,fillColor:'#e63950',fillOpacity:.16}}},edit:{featureGroup:polygonDrawnItems,edit:{selectedPathOptions:{maintainColor:true}},remove:true}});
  polygonMap.addControl(drawControl);
  polygonMap.on(L.Draw.Event.CREATED,e=>{polygonDrawnItems.clearLayers();polygonDrawnItems.addLayer(e.layer);polygonMarkers.clearLayers();polygonResults=[];$('polygonExportBtn').disabled=true;$('polygonTableWrap').innerHTML='<p style="color:#777">Polygon selesai. Tekan Munculkan ODP untuk menghitung hasil.</p>';$('polygonResultCount').textContent='Polygon siap dianalisis';});
@@ -489,6 +516,53 @@ function initPolygonMap(){
  $('polygonStatusFilter').querySelectorAll('input').forEach(cb=>cb.onchange=()=>{if(polygonResults.length)runPolygonAnalysis()});
  $('polygonExportBtn').onclick=exportPolygonExcel;
  $('polygonProfileClose').onclick=()=>$('polygonProfileModal').classList.remove('show');
+ $('polygonMapSearchBtn').onclick=runPolygonMapSearch;
+ $('polygonMapSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();runPolygonMapSearch()}if(e.key==='Escape')hide('polygonMapSearchResults')});
+ document.addEventListener('click',e=>{if(!e.target.closest('#polygonMapSearchWrap'))hide('polygonMapSearchResults')});
+ loadPolygonBoundaries().then(()=>toast('Boundary Kabupaten Bekasi, Karawang, dan Purwakarta berhasil dimuat.')).catch(e=>{console.error(e);toast('Boundary kabupaten gagal dimuat: '+e.message)});
+}
+function addPolygonSearchResult(title,subtitle,kind,onSelect){
+ const box=$('polygonMapSearchResults'),b=document.createElement('button');b.className='search-result';b.type='button';
+ const k=document.createElement('span');k.className='search-kind';k.textContent=kind;
+ const t=document.createElement('strong');t.textContent=title;
+ const sm=document.createElement('small');sm.textContent=subtitle||'';
+ b.append(k,document.createElement('br'),t,sm);b.onclick=()=>{hide('polygonMapSearchResults');onSelect()};box.append(b);
+}
+let polygonSearchRequest=0;
+async function runPolygonMapSearch(){
+ if(!canUsePolygonFeature())return;
+ const q=$('polygonMapSearch').value.trim(),box=$('polygonMapSearchResults');
+ if(q.length<2){toast('Ketik minimal 2 karakter untuk mencari.');return}
+ const req=++polygonSearchRequest;box.replaceChildren();show('polygonMapSearchResults');
+ const loading=document.createElement('div');loading.style.padding='12px';loading.textContent='Mencari ODP dan lokasi…';box.append(loading);
+ try{
+  const term='%'+q.replace(/[,%()]/g,' ').trim()+'%';
+  const fields='odp_name,latitude,longitude,sto,sto_desc,sifa_desa,sifa_kecamatan,sifa_kabupaten,branch,cluster,city,status_2,total_port,used_port,avai_port,tanggal_go_live';
+  const {data,error}=await sb.from('odps').select(fields).eq('map_valid',true).or(['odp_name.ilike.'+term,'sto.ilike.'+term,'sto_desc.ilike.'+term,'sifa_desa.ilike.'+term,'sifa_kecamatan.ilike.'+term,'sifa_kabupaten.ilike.'+term,'branch.ilike.'+term,'cluster.ilike.'+term,'city.ilike.'+term].join(',')).limit(10);
+  if(req!==polygonSearchRequest)return;box.replaceChildren();if(error)throw error;
+  writeActivity('odp_search',{query:q,source:'polygon_map',result_count:(data||[]).length});
+  for(const o of data||[])addPolygonSearchResult(o.odp_name,[o.sto_desc||o.sto,o.sifa_kecamatan,o.sifa_desa].filter(Boolean).join(' · '),'ODP',()=>{
+   const lat=Number(o.latitude),lon=Number(o.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lon)){toast('Koordinat ODP tidak valid.');return}
+   polygonMap.setView([lat,lon],18);polygonSearchMarker.clearLayers();
+   L.circleMarker([lat,lon],{radius:11,weight:2,color:'#fff',fillColor:colors[o.status_2]||'#888',fillOpacity:1}).addTo(polygonSearchMarker).bindTooltip(o.odp_name).openTooltip();
+   showPolygonOdpProfile(o);
+  });
+  let geo=[];
+  try{for(const code of ['BEKASI','KARAWANG','PURWAKARTA']){
+   const kab=code==='BEKASI'?'Bekasi':code==='KARAWANG'?'Karawang':'Purwakarta';
+   const url='https://nominatim.openstreetmap.org/search?'+new URLSearchParams({q:q+', Kabupaten '+kab+', Jawa Barat, Indonesia',format:'jsonv2',limit:'5',addressdetails:'1'});
+   const r=await fetch(url,{headers:{'Accept':'application/json'}});if(r.ok)geo.push(...await r.json());
+  }}catch(e){console.warn('Geocoding lokasi tidak tersedia',e)}
+  if(req!==polygonSearchRequest)return;
+  for(const g of geo){const lat=Number(g.lat),lon=Number(g.lon);if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;
+   const title=g.name||g.display_name.split(',')[0];
+   addPolygonSearchResult(title,g.display_name,'Lokasi / Jalan / Perumahan',()=>{
+    polygonMap.setView([lat,lon],17);polygonSearchMarker.clearLayers();
+    L.marker([lat,lon]).addTo(polygonSearchMarker).bindPopup(title).openPopup();
+   });
+  }
+  if(!box.children.length){const empty=document.createElement('div');empty.style.padding='12px';empty.textContent='Tidak ditemukan. Coba kata kunci lain atau nama yang lebih lengkap.';box.append(empty)}
+ }catch(err){if(req!==polygonSearchRequest)return;box.replaceChildren();const msg=document.createElement('div');msg.style.padding='12px';msg.textContent='Pencarian gagal: '+(err.message||'Periksa koneksi internet.');box.append(msg)}
 }
 function resetPolygonSummary(){['polyTotalOdp','polyTotalPort','polyUsedPort','polyAvailPort','polyOccupancy','polyBlack','polyGreen','polyYellow','polyOrange','polyRed'].forEach(id=>$(id).textContent='—')}
 async function loadAllPolygonOdps(){
