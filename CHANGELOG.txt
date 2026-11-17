@@ -1,3 +1,9 @@
+FRIDA v2.0.0 - Multi-Cluster Expansion
+- Dukungan cluster BEKASI dan KARPUR.
+- Role Super Admin, Manager, dan Sales Force dengan akses berbasis cluster.
+- Registrasi dan persetujuan akun Sales Force.
+- Penambahan data ODP Karawang dan Purwakarta.
+
 FIRA v1.0 - Smart Map Search
 - Search ODP names and attributes (STO, desa, kecamatan, kabupaten, branch, cluster, city).
 - Search public map locations such as roads, housing estates and landmarks via bounded Nominatim results, filtered against the official Kabupaten Bekasi polygon.
