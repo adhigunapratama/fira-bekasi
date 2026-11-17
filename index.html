@@ -6,6 +6,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
 <style>
 :root{--red:#c8102e;--dark:#26232a;--muted:#737780;--bg:#f4f5f7}
 *{box-sizing:border-box}body{margin:0;font:14px system-ui,-apple-system,Segoe UI,sans-serif;color:var(--dark);background:var(--bg)}
@@ -180,6 +181,13 @@ footer{text-align:center;color:#8b8e95;font-size:10px;padding:18px}
 /* Password visibility toggle on SF registration */
 .password-field .password-toggle{z-index:1;cursor:pointer}
 
+
+#polygonMap{height:68vh;min-height:430px;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px #0002;position:relative}
+#polygonView .toolbar>div{min-width:min(100%,420px)}
+#polygonView .summary-item b{font-variant-numeric:tabular-nums}
+#polygonTableWrap table th{background:#f5f5f6;position:sticky;top:0;white-space:nowrap}
+#polygonTableWrap tbody tr{cursor:pointer}#polygonTableWrap tbody tr:hover{background:#fff5f6}
+@media(max-width:650px){#polygonMap{height:62vh;min-height:380px}#polygonView .toolbar>div,#polygonView .toolbar>button{width:100%}}
 </style>
 </head>
 <body>
@@ -203,7 +211,41 @@ footer{text-align:center;color:#8b8e95;font-size:10px;padding:18px}
 <button id="navManagement" class="hidden" type="button">⚙️ Manajemen</button>
 <button id="navProfile" type="button">👤 Profil Saya</button>
 <button id="navActivity" class="hidden" type="button">📊 Riwayat Pengguna</button>
+<button id="navPolygon" class="hidden" type="button">⬡ Analisis ODP Polygon</button>
 </nav>
+<div id="polygonView" class="hidden">
+<div class="page-title">Analisis ODP Polygon</div>
+<div class="card">
+<p style="margin-top:0;color:#666">Gambar polygon pada peta untuk menentukan area analisis. Polygon dapat diedit dengan menarik titik sudut, atau dihapus dan digambar ulang.</p>
+<div class="toolbar" style="margin-bottom:12px">
+<div><label>FILTER STATUS ODP</label><div class="status-filter" id="polygonStatusFilter">
+<label><input type="checkbox" value="Black" checked>Black</label><label><input type="checkbox" value="Green" checked>Green</label><label><input type="checkbox" value="Yellow" checked>Yellow</label><label><input type="checkbox" value="Orange" checked>Orange</label><label><input type="checkbox" value="Red" checked>Red</label>
+</div></div>
+<button id="polygonShowBtn" class="primary" type="button">Munculkan ODP</button>
+<button id="polygonClearBtn" type="button">Hapus Polygon</button>
+<button id="polygonRefreshBtn" type="button">↻ Muat Ulang Data</button>
+</div>
+<div id="polygonMap"><div class="map-switch"><button id="polygonSatBtn" class="primary" type="button">Satelit</button><button id="polygonStreetBtn" type="button">Peta Jalan</button></div></div>
+</div>
+<div class="card">
+<div class="statusline" style="margin-bottom:10px"><b>Ringkasan Okupansi Area Polygon</b><span id="polygonResultCount">Belum ada hasil analisis</span></div>
+<div class="summary-grid" style="grid-template-columns:repeat(auto-fit,minmax(125px,1fr))">
+<div class="summary-item"><small>Total ODP</small><b id="polyTotalOdp">—</b></div>
+<div class="summary-item"><small>Total Port</small><b id="polyTotalPort">—</b></div>
+<div class="summary-item"><small>Used Port</small><b id="polyUsedPort">—</b></div>
+<div class="summary-item"><small>Available / Sisa Port</small><b id="polyAvailPort">—</b></div>
+<div class="summary-item"><small>Okupansi</small><b id="polyOccupancy">—</b></div>
+</div>
+<div class="summary-grid" style="margin-top:8px">
+<div class="summary-item"><small>Black</small><b id="polyBlack">—</b></div><div class="summary-item"><small>Green</small><b id="polyGreen">—</b></div><div class="summary-item"><small>Yellow</small><b id="polyYellow">—</b></div><div class="summary-item"><small>Orange</small><b id="polyOrange">—</b></div><div class="summary-item"><small>Red</small><b id="polyRed">—</b></div>
+</div>
+</div>
+<div class="card">
+<div class="statusline" style="margin-bottom:10px"><b>Daftar ODP Dalam Polygon</b><button id="polygonExportBtn" class="primary" type="button" disabled>Export Excel</button></div>
+<div class="table-wrap" id="polygonTableWrap"><p style="color:#777">Gambar polygon lalu tekan Munculkan ODP.</p></div>
+</div>
+<div class="modal" id="polygonProfileModal"><div class="panel"><button id="polygonProfileClose" style="float:right" type="button">Tutup</button><div style="font-size:11px;color:#777">PROFIL OPTICAL DISTRIBUTION POINT</div><h2 id="polygonProfileName"></h2><div id="polygonProfileStatus"></div><div class="metrics" id="polygonProfileMetrics"></div></div></div>
+</div>
 <div id="activityView" class="hidden">
 <div class="page-title">Riwayat & Aktivitas Pengguna</div>
 <div class="card"><div class="toolbar" style="margin-bottom:12px">
@@ -267,6 +309,8 @@ footer{text-align:center;color:#8b8e95;font-size:10px;padding:18px}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7.2.0/turf.min.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const SUPABASE_URL="https://qywbtdchvkbdjzcljykq.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_6JXoGmWw1e3c1TidYlZtEw_qiZvDog-";
@@ -318,7 +362,7 @@ show('appView');show('userArea');$('userLabel').textContent=profile.full_name||u
 $('profileName').textContent=profile.full_name||'—';$('profileEmail').textContent=user.email||'—';$('profileRole').textContent=profile.role==='super_admin'?'Super Admin':profile.role==='manager'?'Manager':profile.role==='organik_tsel'?'Organik TSEL':'Sales Force';
 const canManage=profile.role==='manager'||profile.role==='super_admin';
 if(canManage){show('navManagement');loadManagement()}else{hide('navManagement')}
-if(profile.role==='super_admin'){show('managerAssignmentSection');show('organikSection');loadManagerCandidates()}else{hide('managerAssignmentSection');hide('organikSection')}if(profile.role==='super_admin'){show('navActivity')}else{hide('navActivity')}
+if(profile.role==='super_admin'){show('managerAssignmentSection');show('organikSection');loadManagerCandidates()}else{hide('managerAssignmentSection');hide('organikSection')}if(profile.role==='super_admin'){show('navActivity')}else{hide('navActivity')}if(canUsePolygonFeature())show('navPolygon');else hide('navPolygon')
 showMapPage();if(!await startSession(isFreshLogin))return;initMap()}
 let sessionStartedAt=null,lastUserActivity=Date.now(),idleWarningShown=false,idleTimer=null,heartbeatTimer=null,sessionEnding=false;
 const IDLE_LIMIT_MS=30*60*1000,IDLE_WARNING_MS=25*60*1000,MAX_SESSION_MS=7*24*60*60*1000;
@@ -350,13 +394,13 @@ $('gpsBtn').onclick=()=>{$('origin').value='gps';getGPS(false)};$('origin').onch
 $('radius').oninput=()=>{$('radiusLabel').textContent=Number($('radius').value)>=1000?(Number($('radius').value)/1000).toFixed(1).replace('.',',')+' KM':$('radius').value+' M';if(center)drawSearchArea()};
 $('refreshBtn').onclick=loadOdps;$('reloadPageBtn').onclick=()=>window.location.reload();$('statusFilter').querySelectorAll('input').forEach(cb=>cb.onchange=()=>{if(center)loadOdps()});
 function selectedStatuses(){return [...$('statusFilter').querySelectorAll('input:checked')].map(x=>x.value)}
-function setActiveNav(id){['navMap','navManagement','navProfile','navActivity'].forEach(x=>$(x).classList.toggle('active',x===id))}
-function showMapPage(){show('mapView');hide('managementView');hide('profileView');hide('activityView');setActiveNav('navMap');setTimeout(()=>{if(map)map.invalidateSize()},80)}
-function showManagementPage(){if(!(profile?.role==='manager'||profile?.role==='super_admin')){toast('Kamu tidak memiliki akses ke menu manajemen.');return}hide('mapView');hide('profileView');hide('activityView');show('managementView');setActiveNav('navManagement')}
-function showProfilePage(){hide('mapView');hide('managementView');hide('activityView');show('profileView');setActiveNav('navProfile')}
+function setActiveNav(id){['navMap','navManagement','navProfile','navActivity','navPolygon'].forEach(x=>$(x).classList.toggle('active',x===id))}
+function showMapPage(){show('mapView');hide('managementView');hide('profileView');hide('activityView');hide('polygonView');setActiveNav('navMap');setTimeout(()=>{if(map)map.invalidateSize()},80)}
+function showManagementPage(){if(!(profile?.role==='manager'||profile?.role==='super_admin')){toast('Kamu tidak memiliki akses ke menu manajemen.');return}hide('mapView');hide('profileView');hide('activityView');hide('polygonView');show('managementView');setActiveNav('navManagement')}
+function showProfilePage(){hide('mapView');hide('managementView');hide('activityView');hide('polygonView');show('profileView');setActiveNav('navProfile')}
 $('navMap').onclick=showMapPage;$('navManagement').onclick=showManagementPage;$('navProfile').onclick=showProfilePage;
-function showActivityPage(){if(profile?.role!=='super_admin'){toast('Riwayat pengguna hanya tersedia untuk Super Admin.');return}hide('mapView');hide('managementView');hide('profileView');show('activityView');setActiveNav('navActivity');loadActivityDashboard()}
-$('navActivity').onclick=showActivityPage;$('refreshActivityBtn').onclick=loadActivityDashboard;['activityCluster','activityRole','activityUser'].forEach(id=>$(id).onchange=renderActivityDashboard);
+function showActivityPage(){if(profile?.role!=='super_admin'){toast('Riwayat pengguna hanya tersedia untuk Super Admin.');return}hide('mapView');hide('managementView');hide('profileView');hide('polygonView');show('activityView');setActiveNav('navActivity');loadActivityDashboard()}
+$('navActivity').onclick=showActivityPage;$('navPolygon').onclick=showPolygonPage;$('refreshActivityBtn').onclick=loadActivityDashboard;['activityCluster','activityRole','activityUser'].forEach(id=>$(id).onchange=renderActivityDashboard);
 let activityUsers=[],activitySessions=[],activityLogs=[];
 function activityWib(v){return v?new Date(v).toLocaleString('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'short',timeStyle:'medium'}):'—'}
 function activityTable(headers,rows,empty){if(!rows.length){const p=document.createElement('p');p.textContent=empty;return p}const w=document.createElement('div');w.className='table-wrap';const t=document.createElement('table'),h=document.createElement('tr');headers.forEach(x=>{const th=document.createElement('th');th.textContent=x;h.append(th)});t.append(h);rows.forEach(row=>{const tr=document.createElement('tr');row.forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.append(td)});t.append(tr)});w.append(t);return w}
@@ -415,6 +459,109 @@ async function loadManagerCandidates(){const select=$('managerCandidate');select
 $('assignManagerBtn').onclick=async()=>{const target_user_id=$('managerCandidate').value,cluster_code=$('managerCluster').value;if(profile?.role!=='super_admin'){toast('Hanya Super Admin yang dapat menetapkan Manager.');return}if(!target_user_id){toast('Pilih akun SF aktif terlebih dahulu.');return}if(!confirm('Tetapkan akun ini sebagai Manager cluster '+(cluster_code==='KARPUR'?'KarPur':'Bekasi')+'?'))return;const btn=$('assignManagerBtn');btn.disabled=true;try{const {error}=await sb.rpc('set_cluster_manager',{target_user_id,cluster_code});if(error)throw error;toast('Manager cluster berhasil ditetapkan.');await loadManagerCandidates();await loadManagement()}catch(e){toast('Gagal menetapkan Manager: '+e.message)}finally{btn.disabled=false}};
 async function assignOrganikTsel(userId,fullName){if(profile?.role!=='super_admin'){toast('Hanya Super Admin yang dapat menetapkan Organik TSEL.');return}if(!confirm('Ubah role '+(fullName||'akun ini')+' menjadi Organik TSEL? Akun akan dapat melihat seluruh peta Bekasi dan KarPur, tanpa akses Manajemen atau Riwayat Pengguna.'))return;try{const {error}=await sb.rpc('set_organik_tsel',{target_user_id:userId});if(error)throw error;toast('Role berhasil diubah menjadi Organik TSEL.');await loadManagement()}catch(e){toast('Gagal mengubah role: '+e.message)}}
 async function loadManagement(){const fields='id,full_name,employee_id,account_status,created_at,cluster_id,clusters(code)';const pending=await sb.from('profiles').select(fields).eq('role','sf').eq('account_status','pending').order('created_at');if(pending.error){$('pendingList').textContent=pending.error.message}else{$('pendingList').replaceChildren(makeUserTable(pending.data||[],'pending'))}const users=await sb.from('profiles').select(fields).eq('role','sf').neq('account_status','pending').order('full_name');if(users.error){$('approvedList').textContent=users.error.message;return}const ids=(users.data||[]).map(x=>x.id);let emailById={};if(ids.length){const {data:authUsers,error:authError}=await sb.rpc('manager_sf_email_list',{target_user_ids:ids});if(!authError)for(const u of authUsers||[])emailById[u.id]=u.email}const rows=(users.data||[]).map(x=>({...x,email:emailById[x.id]||'—'}));$('approvedList').replaceChildren(makeUserTable(rows,'users'));if(profile?.role==='super_admin'){const organik=await sb.from('profiles').select(fields).eq('role','organik_tsel').order('full_name');if(organik.error){$('organikList').textContent=organik.error.message}else{const list=document.createElement('div');if(!organik.data?.length){list.textContent='Belum ada akun Organik TSEL.'}else{const ul=document.createElement('ul');for(const p of organik.data){const li=document.createElement('li');li.textContent=(p.full_name||'Tanpa nama')+' · '+(p.employee_id||'—')+' · '+(p.clusters?.code==='KARPUR'?'KarPur':'Bekasi')+' · '+p.account_status;ul.append(li)}list.append(ul)}$('organikList').replaceChildren(list)}}}
+
+
+let polygonMap=null,polygonBaseSat=null,polygonBaseStreet=null,polygonDrawnItems=null,polygonResults=[],polygonAllOdp=null,polygonMarkers=null,polygonActiveLayer=null;
+function canUsePolygonFeature(){return profile?.account_status==='approved'&&['super_admin','organik_tsel'].includes(profile?.role)}
+function showPolygonPage(){
+ if(!canUsePolygonFeature()){toast('Analisis ODP Polygon hanya tersedia untuk Super Admin dan Organik TSEL.');return}
+ hide('mapView');hide('managementView');hide('profileView');hide('activityView');show('polygonView');setActiveNav('navPolygon');
+ setTimeout(()=>{initPolygonMap();if(polygonMap)polygonMap.invalidateSize()},100);
+}
+function initPolygonMap(){
+ if(!canUsePolygonFeature())return;
+ if(polygonMap){polygonMap.invalidateSize();return}
+ polygonMap=L.map('polygonMap').setView([-6.25,107.1],11);
+ polygonBaseSat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles &copy; Esri'}).addTo(polygonMap);
+ polygonBaseStreet=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'});
+ $('polygonSatBtn').onclick=()=>{if(polygonMap.hasLayer(polygonBaseStreet))polygonMap.removeLayer(polygonBaseStreet);if(!polygonMap.hasLayer(polygonBaseSat))polygonBaseSat.addTo(polygonMap);$('polygonSatBtn').classList.add('primary');$('polygonStreetBtn').classList.remove('primary')};
+ $('polygonStreetBtn').onclick=()=>{if(polygonMap.hasLayer(polygonBaseSat))polygonMap.removeLayer(polygonBaseSat);if(!polygonMap.hasLayer(polygonBaseStreet))polygonBaseStreet.addTo(polygonMap);$('polygonStreetBtn').classList.add('primary');$('polygonSatBtn').classList.remove('primary')};
+ polygonDrawnItems=new L.FeatureGroup().addTo(polygonMap);
+ polygonMarkers=L.layerGroup().addTo(polygonMap);
+ const drawControl=new L.Control.Draw({position:'topleft',draw:{polyline:false,rectangle:false,circle:false,circlemarker:false,marker:false,polygon:{allowIntersection:false,showArea:true,shapeOptions:{color:'#c8102e',weight:3,fillColor:'#e63950',fillOpacity:.16}}},edit:{featureGroup:polygonDrawnItems,edit:{selectedPathOptions:{maintainColor:true}},remove:true}});
+ polygonMap.addControl(drawControl);
+ polygonMap.on(L.Draw.Event.CREATED,e=>{polygonDrawnItems.clearLayers();polygonDrawnItems.addLayer(e.layer);polygonMarkers.clearLayers();polygonResults=[];$('polygonExportBtn').disabled=true;$('polygonTableWrap').innerHTML='<p style="color:#777">Polygon selesai. Tekan Munculkan ODP untuk menghitung hasil.</p>';$('polygonResultCount').textContent='Polygon siap dianalisis';});
+ polygonMap.on(L.Draw.Event.EDITED,()=>{polygonResults=[];$('polygonExportBtn').disabled=true;$('polygonTableWrap').innerHTML='<p style="color:#777">Polygon berubah. Tekan Munculkan ODP untuk memperbarui hasil.</p>';$('polygonResultCount').textContent='Polygon berubah · hasil perlu diperbarui';});
+ polygonMap.on(L.Draw.Event.DELETED,()=>{polygonMarkers.clearLayers();polygonResults=[];resetPolygonSummary();$('polygonTableWrap').innerHTML='<p style="color:#777">Polygon dihapus. Gambar polygon baru untuk memulai.</p>';$('polygonExportBtn').disabled=true});
+ $('polygonClearBtn').onclick=()=>{polygonDrawnItems.clearLayers();polygonMarkers.clearLayers();polygonResults=[];resetPolygonSummary();$('polygonTableWrap').innerHTML='<p style="color:#777">Gambar polygon lalu tekan Munculkan ODP.</p>';$('polygonResultCount').textContent='Belum ada hasil analisis';$('polygonExportBtn').disabled=true};
+ $('polygonShowBtn').onclick=runPolygonAnalysis;
+ $('polygonRefreshBtn').onclick=async()=>{polygonAllOdp=null;await runPolygonAnalysis()};
+ $('polygonStatusFilter').querySelectorAll('input').forEach(cb=>cb.onchange=()=>{if(polygonResults.length)runPolygonAnalysis()});
+ $('polygonExportBtn').onclick=exportPolygonExcel;
+ $('polygonProfileClose').onclick=()=>$('polygonProfileModal').classList.remove('show');
+}
+function resetPolygonSummary(){['polyTotalOdp','polyTotalPort','polyUsedPort','polyAvailPort','polyOccupancy','polyBlack','polyGreen','polyYellow','polyOrange','polyRed'].forEach(id=>$(id).textContent='—')}
+async function loadAllPolygonOdps(){
+ if(polygonAllOdp)return polygonAllOdp;
+ const fields='id,odp_name,status_2,latitude,longitude,total_port,used_port,avai_port,tanggal_go_live,sto,sto_desc,sifa_desa,sifa_kecamatan,sifa_kabupaten,branch,cluster,city';
+ let all=[],from=0,batch=1000;
+ while(true){
+  const {data,error}=await sb.from('odps').select(fields).eq('map_valid',true).order('odp_name').range(from,from+batch-1);
+  if(error)throw error;
+  all=all.concat(data||[]);
+  if(!data||data.length<batch)break;
+  from+=batch;
+ }
+ polygonAllOdp=all;return all;
+}
+function polygonNumber(v){const n=Number(v);return Number.isFinite(n)?n:0}
+function polygonFormat(v){return polygonNumber(v).toLocaleString('id-ID')}
+function polygonSelectedStatuses(){return [...$('polygonStatusFilter').querySelectorAll('input:checked')].map(x=>x.value)}
+async function runPolygonAnalysis(){
+ if(!canUsePolygonFeature()){toast('Akses ditolak.');return}
+ if(!polygonDrawnItems||!polygonDrawnItems.getLayers().length){toast('Gambar polygon terlebih dahulu menggunakan alat polygon di peta.');return}
+ const statuses=polygonSelectedStatuses();if(!statuses.length){toast('Pilih minimal satu status ODP.');return}
+ const btn=$('polygonShowBtn');btn.disabled=true;btn.textContent='Memproses…';
+ try{
+  const layer=polygonDrawnItems.getLayers()[0],geo=layer.toGeoJSON();
+  const rows=await loadAllPolygonOdps();
+  const selected=rows.filter(o=>statuses.includes(String(o.status_2||'').trim())&&Number.isFinite(Number(o.latitude))&&Number.isFinite(Number(o.longitude))&&turf.booleanPointInPolygon(turf.point([Number(o.longitude),Number(o.latitude)]),geo));
+  polygonResults=selected.sort((a,b)=>String(a.odp_name||'').localeCompare(String(b.odp_name||''),'id'));
+  polygonMarkers.clearLayers();
+  const sums={Black:0,Green:0,Yellow:0,Orange:0,Red:0};
+  let total=0,used=0,avail=0;
+  for(const o of polygonResults){
+   const status=String(o.status_2||'').trim();if(sums[status]!==undefined)sums[status]++;
+   total+=polygonNumber(o.total_port);used+=polygonNumber(o.used_port);avail+=polygonNumber(o.avai_port);
+   const marker=L.circleMarker([Number(o.latitude),Number(o.longitude)],{radius:9,weight:2,color:'#fff',fillColor:colors[status]||'#888',fillOpacity:1,bubblingMouseEvents:false}).addTo(polygonMarkers);
+   marker.on('click',()=>showPolygonOdpProfile(o));
+  }
+  $('polyTotalOdp').textContent=polygonFormat(polygonResults.length);$('polyTotalPort').textContent=polygonFormat(total);$('polyUsedPort').textContent=polygonFormat(used);$('polyAvailPort').textContent=polygonFormat(avail);$('polyOccupancy').textContent=(total>0?(used/total*100):0).toLocaleString('id-ID',{maximumFractionDigits:2})+'%';
+  Object.keys(sums).forEach(k=>$('poly'+k).textContent=polygonFormat(sums[k]));
+  $('polygonResultCount').textContent=polygonFormat(polygonResults.length)+' ODP ditemukan · '+polygonFormat(rows.length)+' data diperiksa';
+  renderPolygonTable();$('polygonExportBtn').disabled=!polygonResults.length;
+  if(polygonResults.length){const bounds=L.latLngBounds(polygonResults.map(o=>[Number(o.latitude),Number(o.longitude)]));if(bounds.isValid())polygonMap.fitBounds(bounds.pad(.12),{maxZoom:17})}
+  toast(polygonResults.length+' ODP ditemukan di dalam polygon.');
+ }catch(e){console.error(e);toast('Analisis polygon gagal: '+(e.message||e));}
+ finally{btn.disabled=false;btn.textContent='Munculkan ODP'}
+}
+function renderPolygonTable(){
+ const wrap=$('polygonTableWrap');wrap.replaceChildren();
+ if(!polygonResults.length){const p=document.createElement('p');p.style.color='#777';p.textContent='Tidak ada ODP yang sesuai polygon dan filter status.';wrap.append(p);return}
+ const table=document.createElement('table'),thead=document.createElement('thead'),hr=document.createElement('tr');
+ ['Nama ODP','Status ODP','Used Port','Sisa Port'].forEach(v=>{const th=document.createElement('th');th.textContent=v;hr.append(th)});thead.append(hr);table.append(thead);
+ const body=document.createElement('tbody');
+ polygonResults.forEach(o=>{const tr=document.createElement('tr');tr.onclick=()=>showPolygonOdpProfile(o);[o.odp_name||'—',o.status_2||'—',polygonFormat(o.used_port),polygonFormat(o.avai_port)].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.append(td)});body.append(tr)});
+ table.append(body);wrap.append(table);
+}
+function showPolygonOdpProfile(o){
+ if(!canUsePolygonFeature())return;
+ $('polygonProfileName').textContent=o.odp_name||'ODP';$('polygonProfileStatus').textContent='STATUS 2: '+(o.status_2||'—');$('polygonProfileMetrics').replaceChildren();
+ const vals=[['Tanggal Go Live',o.tanggal_go_live||'—'],['STO',o.sto_desc||o.sto||'—'],['Kecamatan',o.sifa_kecamatan||'—'],['Desa',o.sifa_desa||'—'],['Kabupaten',o.sifa_kabupaten||'—'],['Branch',o.branch||'—'],['Cluster',o.cluster||'—'],['Total Port',o.total_port??'—'],['Used Port',o.used_port??'—'],['Available / Sisa Port',o.avai_port??'—'],['Koordinat',Number(o.latitude).toFixed(6)+', '+Number(o.longitude).toFixed(6)]];
+ vals.forEach(([k,v])=>{const el=document.createElement('div');el.className='metric';const sm=document.createElement('small');sm.textContent=k;const b=document.createElement('b');b.textContent=v;el.append(sm,b);$('polygonProfileMetrics').append(el)});
+ $('polygonProfileModal').classList.add('show');
+}
+function exportPolygonExcel(){
+ if(!canUsePolygonFeature()||!polygonResults.length)return;
+ if(!window.XLSX){toast('Library Excel belum tersedia. Periksa koneksi internet.');return}
+ const total=polygonResults.reduce((a,o)=>a+polygonNumber(o.total_port),0),used=polygonResults.reduce((a,o)=>a+polygonNumber(o.used_port),0),avail=polygonResults.reduce((a,o)=>a+polygonNumber(o.avai_port),0);
+ const data=polygonResults.map(o=>({'Nama ODP':o.odp_name||'','Status ODP':o.status_2||'','Used Port':polygonNumber(o.used_port),'Sisa Port':polygonNumber(o.avai_port),'Total Port':polygonNumber(o.total_port),'Tanggal Go Live':o.tanggal_go_live||'','STO':o.sto_desc||o.sto||'','Desa':o.sifa_desa||'','Kecamatan':o.sifa_kecamatan||'','Kabupaten':o.sifa_kabupaten||'','Latitude':polygonNumber(o.latitude),'Longitude':polygonNumber(o.longitude)}));
+ const summary=[['Ringkasan Analisis ODP Polygon','Nilai'],['Total ODP',polygonResults.length],['Total Port',total],['Used Port',used],['Available / Sisa Port',avail],['Persentase Okupansi',total?used/total:0]];
+ const wb=XLSX.utils.book_new(),ws=XLSX.utils.json_to_sheet(data),ss=XLSX.utils.aoa_to_sheet(summary);
+ ws['!cols']=[{wch:28},{wch:14},{wch:12},{wch:12},{wch:12},{wch:18},{wch:22},{wch:22},{wch:22},{wch:22},{wch:13},{wch:13}];ss['B6'].z='0.00%';
+ XLSX.utils.book_append_sheet(wb,ss,'Ringkasan');XLSX.utils.book_append_sheet(wb,ws,'Daftar ODP');
+ const stamp=new Date().toISOString().slice(0,10);XLSX.writeFile(wb,'FRIDA_Analisis_ODP_Polygon_'+stamp+'.xlsx');
+}
 
 sb.auth.getSession().then(({data})=>{if(new URLSearchParams(window.location.search).get('reset')==='1'){hide('loginBox');hide('signupBox');hide('forgotBox');show('resetBox');show('authView');return}if(data.session)enterApp(data.session.user)});
 sb.auth.onAuthStateChange((event,session)=>{if(event==='PASSWORD_RECOVERY'){show('authView');showAuthPanel('resetBox')}if(event==='SIGNED_OUT'){hide('appView');hide('pendingView');hide('accountStatusView');hide('userArea');show('authView')}});
