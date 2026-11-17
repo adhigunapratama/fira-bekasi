@@ -306,7 +306,7 @@ $('profileName').textContent=profile.full_name||'—';$('profileEmail').textCont
 const canManage=profile.role==='manager'||profile.role==='super_admin';
 if(canManage){show('navManagement');loadManagement()}else{hide('navManagement')}
 if(profile.role==='super_admin'){show('managerAssignmentSection');loadManagerCandidates()}else{hide('managerAssignmentSection')}
-showMapPage();await startSession();initMap()}
+showMapPage();if(!await startSession())return;initMap()}
 let sessionStartedAt=null,lastUserActivity=Date.now(),idleWarningShown=false,idleTimer=null,heartbeatTimer=null,sessionEnding=false;
 const IDLE_LIMIT_MS=30*60*1000,IDLE_WARNING_MS=25*60*1000,MAX_SESSION_MS=7*24*60*60*1000;
 async function writeActivity(eventType,metadata={}){if(!currentUser||!currentSession)return;try{await sb.from('user_activity_logs').insert({user_id:currentUser.id,session_id:currentSession,event_type:eventType,metadata})}catch(err){console.warn('Activity log failed:',err.message)}}
@@ -314,16 +314,29 @@ async function startSession(){
  const now=new Date(),maxExpiry=new Date(now.getTime()+MAX_SESSION_MS);
  let {data:existing,error:readError}=await sb.from('access_sessions').select('id,logged_in_at,last_seen_at,expires_at').eq('user_id',currentUser.id).is('logged_out_at',null).gt('expires_at',now.toISOString()).order('logged_in_at',{ascending:false}).limit(1).maybeSingle();
  if(readError)console.warn('Read session failed:',readError.message);
- if(existing){currentSession=existing.id;sessionStartedAt=new Date(existing.logged_in_at).getTime();await sb.from('access_sessions').update({last_seen_at:now.toISOString()}).eq('id',currentSession)}
+ if(existing){
+  currentSession=existing.id;sessionStartedAt=new Date(existing.logged_in_at).getTime();
+  lastUserActivity=new Date(existing.last_seen_at||existing.logged_in_at).getTime();
+  const idleAtRestore=Date.now()-lastUserActivity;
+  if(Date.now()-sessionStartedAt>=MAX_SESSION_MS||idleAtRestore>=IDLE_LIMIT_MS){
+   const reason=Date.now()-sessionStartedAt>=MAX_SESSION_MS?'session_expired':'idle_timeout';
+   await sb.from('access_sessions').update({logged_out_at:now.toISOString(),ended_reason:reason,duration_seconds:Math.max(0,Math.floor((now.getTime()-sessionStartedAt)/1000))}).eq('id',currentSession);
+   currentSession=null;await sb.auth.signOut();currentUser=null;profile=null;show('authView');
+   toast(reason==='session_expired'?'Sesi FRIDA telah mencapai batas maksimum 7 hari. Silakan login kembali.':'Sesi berakhir karena tidak ada aktivitas selama 30 menit. Silakan login kembali.');
+   return false;
+  }
+  await sb.from('access_sessions').update({last_seen_at:now.toISOString()}).eq('id',currentSession)
+ }
  else{
   const {data,error}=await sb.from('access_sessions').insert({user_id:currentUser.id,last_seen_at:now.toISOString(),expires_at:maxExpiry.toISOString()}).select('id,logged_in_at').single();
   if(error){toast('Gagal membuat sesi penggunaan: '+error.message);return}
   currentSession=data.id;sessionStartedAt=new Date(data.logged_in_at).getTime();await writeActivity('login');
  }
- lastUserActivity=Date.now();idleWarningShown=false;sessionEnding=false;
+ if(!lastUserActivity)lastUserActivity=Date.now();idleWarningShown=false;sessionEnding=false;
  clearInterval(idleTimer);clearInterval(heartbeatTimer);
  idleTimer=setInterval(checkSessionLimits,10000);
  heartbeatTimer=setInterval(async()=>{if(currentSession&&!sessionEnding){const nowIso=new Date().toISOString();const {error}=await sb.from('access_sessions').update({last_seen_at:nowIso}).eq('id',currentSession).is('logged_out_at',null);if(error)console.warn('Session heartbeat failed:',error.message)}},60000);
+ return true;
 }
 function registerUserActivity(){if(!currentSession||sessionEnding)return;lastUserActivity=Date.now();if(idleWarningShown){idleWarningShown=false;toast('Sesi tetap aktif. Aktivitas terdeteksi kembali.')} }
 function checkSessionLimits(){
