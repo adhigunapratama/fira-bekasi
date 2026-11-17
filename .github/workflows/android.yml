@@ -74,6 +74,12 @@ jobs:
       - name: Generate Android app icons
         run: npx capacitor-assets generate --android --iconBackgroundColor '#C8102E' --iconBackgroundColorDark '#C8102E'
         
+      - name: Prepare local boundary data for Capacitor
+        run: |
+          mkdir -p www/www
+          rm -rf www/www/data
+          cp -R www/data www/www/data
+
       - name: Sync Capacitor
         run: npx cap sync android
 
