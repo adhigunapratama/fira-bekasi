@@ -168,6 +168,14 @@ footer{text-align:center;color:#8b8e95;font-size:10px;padding:18px}
   #managerAssignmentSection:not(.hidden){max-width:100%}
 }
 
+
+/* Password visibility toggle on login */
+.password-field{position:relative;width:100%;margin:5px 0 12px}
+.password-field input{display:block;width:100%;padding-right:52px!important;margin:0!important}
+.password-toggle{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:40px;height:40px;padding:8px;border:0;background:transparent;color:#687386;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.password-toggle:hover{background:#f0f2f5}
+.password-toggle svg{width:21px;height:21px;display:block}
+
 </style>
 </head>
 <body>
@@ -175,7 +183,7 @@ footer{text-align:center;color:#8b8e95;font-size:10px;padding:18px}
 <main>
 <section id="authView" class="card auth">
 <div class="auth-logo-wrap"><img class="auth-logo" src="assets/frida-logo.png" alt="FRIDA — Fiber Routing &amp; Intelligence Data Assistant"></div>
-<div id="loginBox"><h3>Masuk</h3><label>Email atau ID SF</label><input id="loginEmail" type="text" autocomplete="username" placeholder="Masukkan email atau ID SF"><label>Password</label><input id="loginPass" type="password" autocomplete="current-password"><button class="primary" id="loginBtn" style="width:100%">Masuk ke FRIDA</button><p><a href="#" id="showForgot">Lupa Password?</a></p><p>Belum punya akun? <a href="#" id="showSignup">Daftar Sales Force</a></p></div>
+<div id="loginBox"><h3>Masuk</h3><label>Email atau ID SF</label><input id="loginEmail" type="text" autocomplete="username" placeholder="Masukkan email atau ID SF"><label>Password</label><div class="password-field"><input id="loginPass" type="password" autocomplete="current-password"><button id="toggleLoginPass" class="password-toggle" type="button" aria-label="Tampilkan password" title="Tampilkan password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7z"/><circle cx="12" cy="12" r="3"/></svg></button></div><button class="primary" id="loginBtn" style="width:100%">Masuk ke FRIDA</button><p><a href="#" id="showForgot">Lupa Password?</a></p><p>Belum punya akun? <a href="#" id="showSignup">Daftar Sales Force</a></p></div>
 <div id="forgotBox" class="hidden"><h3>Lupa Password</h3><p>Masukkan email akun FRIDA. Kami akan mengirim tautan untuk membuat password baru.</p><label>Email terdaftar</label><input id="forgotEmail" type="email" autocomplete="email"><button class="primary" id="sendResetBtn" style="width:100%">Kirim Tautan Reset</button><p><a href="#" id="forgotBack">Kembali ke login</a></p></div>
 <div id="resetBox" class="hidden"><h3>Buat Password Baru</h3><p>Masukkan password baru untuk akun FRIDA Anda.</p><label>Password baru (minimal 8 karakter)</label><input id="resetPass1" type="password" autocomplete="new-password"><label>Konfirmasi password baru</label><input id="resetPass2" type="password" autocomplete="new-password"><button class="primary" id="saveResetBtn" style="width:100%">Simpan Password Baru</button></div>
 <div id="signupBox" class="hidden"><h3>Registrasi Sales Force</h3><label>Nama lengkap</label><input id="regName"><label>ID SF (wajib)</label><input id="regNip" required maxlength="40" autocomplete="off" placeholder="Contoh: BAGXXX"><label>Nomor HP</label><input id="regPhone"><label>Email</label><input id="regEmail" type="email">
@@ -251,6 +259,18 @@ let currentUser=null, profile=null, map=null, markers=null, center=null, selecte
 const colors={Black:"#171717",Green:"#269b62",Yellow:"#e3ad27",Orange:"#ed8b25",Red:"#d71920"};
 function toast(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',3500)}
 function show(id){$(id).classList.remove('hidden')}function hide(id){$(id).classList.add('hidden')}
+
+$('toggleLoginPass').onclick=()=>{
+ const input=$('loginPass');
+ const reveal=input.type==='password';
+ input.type=reveal?'text':'password';
+ $('toggleLoginPass').setAttribute('aria-label',reveal?'Sembunyikan password':'Tampilkan password');
+ $('toggleLoginPass').setAttribute('title',reveal?'Sembunyikan password':'Tampilkan password');
+ $('toggleLoginPass').innerHTML=reveal
+  ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 002.8 2.8"/><path d="M9.9 5.2A10.8 10.8 0 0112 5c5 0 8.5 4.5 9.5 7-.4 1.1-1.2 2.3-2.3 3.3"/><path d="M6.2 6.2C4.2 7.5 2.9 9.5 2.5 12c.8 2.4 4.3 7 9.5 7 1.1 0 2.1-.2 3-.6"/></svg>'
+  : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+};
+
 function showAuthPanel(id){['loginBox','signupBox','forgotBox','resetBox'].forEach(x=>hide(x));show(id)}
 $('showSignup').onclick=e=>{e.preventDefault();showAuthPanel('signupBox')};
 $('showLogin').onclick=e=>{e.preventDefault();showAuthPanel('loginBox')};
