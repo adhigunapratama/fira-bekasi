@@ -2,6 +2,13 @@ name: Build FRIDA Android APK
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'www/**'
+      - 'package.json'
+      - 'capacitor.config.ts'
+      - '.github/workflows/android.yml'
 
 jobs:
   build:
@@ -75,6 +82,24 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Set Android version code and name
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          VERSION_CODE="$(node -e "const [a,b,c]=process.argv[1].split(/[.-]/).map(Number); process.stdout.write(String(a*10000+b*100+c))" "$VERSION")"
+          python3 - "$VERSION" "$VERSION_CODE" <<'PY'
+          from pathlib import Path
+          import re, sys
+          path = Path("android/app/build.gradle")
+          content = path.read_text()
+          version_name, version_code = sys.argv[1], sys.argv[2]
+          content, n1 = re.subn(r'versionCode\\s+\\d+', f'versionCode {version_code}', content, count=1)
+          content, n2 = re.subn(r'versionName\\s+"[^"]+"', f'versionName "{version_name}"', content, count=1)
+          if n1 != 1 or n2 != 1:
+              raise SystemExit("Tidak dapat memperbarui versionCode/versionName pada build.gradle")
+          path.write_text(content)
+          print(f"Android version: {version_name} ({version_code})")
+          PY
 
       - name: Build debug APK
         working-directory: android
