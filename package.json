@@ -1,8 +1,8 @@
 {
-  "name": "frida-android-v14",
-  "version": "1.4.3",
+  "name": "frida-android-v20",
+  "version": "2.0.0",
   "private": true,
-  "description": "FRIDA Android wrapper for THCO Kabupaten Bekasi",
+  "description": "FRIDA Android wrapper — Multi-Cluster Expansion",
   "scripts": {
     "android:add": "npx cap add android",
     "android:sync": "npx cap sync android",
